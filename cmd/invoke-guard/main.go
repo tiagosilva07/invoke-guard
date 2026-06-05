@@ -279,12 +279,9 @@ func cmdMCP(args []string) int {
 		fmt.Fprintln(os.Stderr, "usage: invoke-guard mcp   (no flags; serves MCP over stdio)")
 		return 2
 	}
-	orch, err := check.NewNPM(".", loadPopular())
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 2
-	}
-	srv := &mcp.Server{Checker: orch, Version: version}
+	srv := &mcp.Server{Version: version, Resolve: func(eco string) (mcp.Checker, error) {
+		return check.New(eco, ".")
+	}}
 	if err := srv.Serve(os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "mcp:", err)
 		return 1
