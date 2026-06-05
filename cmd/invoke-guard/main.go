@@ -224,16 +224,30 @@ func cmdAllow(args []string) int {
 // cmdScan vets the dependencies a PR ADDS or CHANGES, by diffing the lockfile
 // against a base. Only newly added/changed deps are checked, so it's fast and
 // doesn't re-flag the whole tree. Reads base + head lockfiles from --base/--head
-// (paths); defaults head to ./package-lock.json.
+// (paths); defaults head to the ecosystem's canonical lockfile name.
 func cmdScan(args []string) int {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
-	basePath := fs.String("base", "", "base lockfile (e.g. the target branch's package-lock.json)")
+	basePath := fs.String("base", "", "base lockfile (e.g. the target branch's lockfile)")
 	headPath := fs.String("head", "package-lock.json", "head lockfile")
 	asJSON := fs.Bool("json", false, "JSON output")
 	asSARIF := fs.Bool("sarif", false, "SARIF output")
 	strict := fs.Bool("strict", false, "treat WARN as failure")
+	eco := fs.String("ecosystem", "npm", "npm|pypi|crates")
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	// Validate ecosystem early (before any file I/O).
+	validEco := map[string]bool{"npm": true, "pypi": true, "crates": true}
+	if !validEco[*eco] {
+		fmt.Fprintf(os.Stderr, "unsupported ecosystem %q (use npm, pypi, or crates)\n", *eco)
+		return 2
+	}
+	// Pick per-ecosystem default head path when the flag still holds the npm default.
+	defaultHead := map[string]string{"npm": "package-lock.json", "crates": "Cargo.lock", "pypi": "poetry.lock"}
+	if *headPath == "package-lock.json" {
+		if h, ok := defaultHead[*eco]; ok {
+			*headPath = h
+		}
 	}
 	head, err := os.ReadFile(*headPath)
 	if err != nil {
@@ -246,15 +260,14 @@ func cmdScan(args []string) int {
 			fmt.Fprintln(os.Stderr, "read base lockfile:", err)
 			return 2
 		}
-	} else {
-		base = []byte(`{"packages":{}}`) // no base → treat all as added
 	}
-	added, changed, err := check.DiffLockfiles(base, head)
+	// base == nil → ParseLock on empty bytes → empty map → all head deps are "added"
+	added, changed, err := check.DiffLockfilesEco(*eco, base, head)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "parse lockfiles:", err)
 		return 2
 	}
-	orch, err := check.NewNPM(".", loadPopular())
+	orch, err := check.New(*eco, ".")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
@@ -264,7 +277,7 @@ func cmdScan(args []string) int {
 		results = append(results, orch.Check(context.Background(), a.Name, a.Version))
 	}
 	for _, c := range changed {
-		r := verdict.Decide("npm", c.Name, c.Version, []verdict.Signal{check.LockfileIntegrity(c)})
+		r := verdict.Decide(*eco, c.Name, c.Version, []verdict.Signal{check.LockfileIntegrity(c)})
 		results = append(results, r)
 	}
 	reporterFor(*asJSON, *asSARIF).Report(results)
