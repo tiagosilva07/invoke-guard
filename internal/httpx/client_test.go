@@ -13,7 +13,9 @@ func TestGetJSON_AllowedHost(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := New([]string{srv.Listener.Addr().String()})
-	var out struct{ OK bool `json:"ok"` }
+	var out struct {
+		OK bool `json:"ok"`
+	}
 	code, err := c.GetJSON(context.Background(), srv.URL, &out)
 	if err != nil || code != 200 || !out.OK {
 		t.Fatalf("code=%d err=%v out=%+v", code, err, out)
