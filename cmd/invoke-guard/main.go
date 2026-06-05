@@ -25,12 +25,12 @@ func usage() string {
 	return `invoke-guard — check a dependency before you install it
 
 usage:
-  invoke-guard check <name>[@version] [--json|--sarif] [--strict]
-  invoke-guard install <names...> [--ignore-scripts] [--strict]
+  invoke-guard check <name>[@version] [--ecosystem npm|pypi|crates] [--json|--sarif] [--strict]
+  invoke-guard install <names...> [--ecosystem npm|pypi|crates] [--ignore-scripts] [--strict]
   invoke-guard allow <name>
-  invoke-guard scan [--strict] [--json|--sarif]
+  invoke-guard scan [--ecosystem npm|pypi|crates] [--base F] [--head F] [--strict] [--json|--sarif]
   invoke-guard mcp                                  (MCP server for AI agents; stdio)
-  invoke-guard init <bash|zsh|powershell>           (shell hook: gate npm install)
+  invoke-guard init <bash|zsh|powershell> [npm|pip|cargo]   (shell hook: gate installs)
   invoke-guard --version
 `
 }
@@ -67,17 +67,28 @@ func run(args []string) int {
 	}
 }
 
-// reorderFlagsFirst moves leading-dash tokens ahead of operands so boolean flags
-// may appear after the package name(s). Safe only for commands whose flags are all
-// boolean (check, install); npm names never start with '-'.
-func reorderFlagsFirst(args []string) []string {
+// reorderFlagsFirst moves leading-dash tokens ahead of operands so flags may
+// appear after the package name(s). valueFlags names the flags that take a separate
+// value token (e.g. "ecosystem"): their value stays attached to the flag rather than
+// being mistaken for an operand. npm/pypi/crates names never start with '-'.
+func reorderFlagsFirst(args []string, valueFlags ...string) []string {
+	vf := map[string]bool{}
+	for _, f := range valueFlags {
+		vf["-"+f] = true
+		vf["--"+f] = true
+	}
 	var flags, ops []string
-	for _, a := range args {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
 		if strings.HasPrefix(a, "-") {
 			flags = append(flags, a)
-		} else {
-			ops = append(ops, a)
+			if vf[a] && i+1 < len(args) { // space-form value flag: keep its value
+				flags = append(flags, args[i+1])
+				i++
+			}
+			continue
 		}
+		ops = append(ops, a)
 	}
 	return append(flags, ops...)
 }
@@ -121,7 +132,8 @@ func cmdCheck(args []string) int {
 	asJSON := fs.Bool("json", false, "JSON output")
 	asSARIF := fs.Bool("sarif", false, "SARIF output")
 	strict := fs.Bool("strict", false, "treat WARN as failure")
-	if err := fs.Parse(reorderFlagsFirst(args)); err != nil {
+	eco := fs.String("ecosystem", "npm", "npm|pypi|crates")
+	if err := fs.Parse(reorderFlagsFirst(args, "ecosystem")); err != nil {
 		return 2
 	}
 	if fs.NArg() != 1 {
@@ -129,7 +141,7 @@ func cmdCheck(args []string) int {
 		return 2
 	}
 	name, ver := splitNameVersion(fs.Arg(0))
-	orch, err := check.NewNPM(".", loadPopular())
+	orch, err := check.New(*eco, ".")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
@@ -143,7 +155,8 @@ func cmdInstall(args []string) int {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	ignoreScripts := fs.Bool("ignore-scripts", false, "pass --ignore-scripts to npm")
 	strict := fs.Bool("strict", false, "treat WARN as failure")
-	if err := fs.Parse(reorderFlagsFirst(args)); err != nil {
+	eco := fs.String("ecosystem", "npm", "npm|pypi|crates")
+	if err := fs.Parse(reorderFlagsFirst(args, "ecosystem")); err != nil {
 		return 2
 	}
 	names := fs.Args()
@@ -151,7 +164,7 @@ func cmdInstall(args []string) int {
 		fmt.Fprint(os.Stderr, usage())
 		return 2
 	}
-	orch, err := check.NewNPM(".", loadPopular())
+	orch, err := check.New(*eco, ".")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
@@ -211,16 +224,30 @@ func cmdAllow(args []string) int {
 // cmdScan vets the dependencies a PR ADDS or CHANGES, by diffing the lockfile
 // against a base. Only newly added/changed deps are checked, so it's fast and
 // doesn't re-flag the whole tree. Reads base + head lockfiles from --base/--head
-// (paths); defaults head to ./package-lock.json.
+// (paths); defaults head to the ecosystem's canonical lockfile name.
 func cmdScan(args []string) int {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
-	basePath := fs.String("base", "", "base lockfile (e.g. the target branch's package-lock.json)")
+	basePath := fs.String("base", "", "base lockfile (e.g. the target branch's lockfile)")
 	headPath := fs.String("head", "package-lock.json", "head lockfile")
 	asJSON := fs.Bool("json", false, "JSON output")
 	asSARIF := fs.Bool("sarif", false, "SARIF output")
 	strict := fs.Bool("strict", false, "treat WARN as failure")
+	eco := fs.String("ecosystem", "npm", "npm|pypi|crates")
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	// Validate ecosystem early (before any file I/O).
+	validEco := map[string]bool{"npm": true, "pypi": true, "crates": true}
+	if !validEco[*eco] {
+		fmt.Fprintf(os.Stderr, "unsupported ecosystem %q (use npm, pypi, or crates)\n", *eco)
+		return 2
+	}
+	// Pick per-ecosystem default head path when the flag still holds the npm default.
+	defaultHead := map[string]string{"npm": "package-lock.json", "crates": "Cargo.lock", "pypi": "poetry.lock"}
+	if *headPath == "package-lock.json" {
+		if h, ok := defaultHead[*eco]; ok {
+			*headPath = h
+		}
 	}
 	head, err := os.ReadFile(*headPath)
 	if err != nil {
@@ -233,15 +260,14 @@ func cmdScan(args []string) int {
 			fmt.Fprintln(os.Stderr, "read base lockfile:", err)
 			return 2
 		}
-	} else {
-		base = []byte(`{"packages":{}}`) // no base → treat all as added
 	}
-	added, changed, err := check.DiffLockfiles(base, head)
+	// base == nil → ParseLock on empty bytes → empty map → all head deps are "added"
+	added, changed, err := check.DiffLockfilesEco(*eco, base, head)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "parse lockfiles:", err)
 		return 2
 	}
-	orch, err := check.NewNPM(".", loadPopular())
+	orch, err := check.New(*eco, ".")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
@@ -251,7 +277,7 @@ func cmdScan(args []string) int {
 		results = append(results, orch.Check(context.Background(), a.Name, a.Version))
 	}
 	for _, c := range changed {
-		r := verdict.Decide("npm", c.Name, c.Version, []verdict.Signal{check.LockfileIntegrity(c)})
+		r := verdict.Decide(*eco, c.Name, c.Version, []verdict.Signal{check.LockfileIntegrity(c)})
 		results = append(results, r)
 	}
 	reporterFor(*asJSON, *asSARIF).Report(results)
@@ -277,12 +303,9 @@ func cmdMCP(args []string) int {
 		fmt.Fprintln(os.Stderr, "usage: invoke-guard mcp   (no flags; serves MCP over stdio)")
 		return 2
 	}
-	orch, err := check.NewNPM(".", loadPopular())
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 2
-	}
-	srv := &mcp.Server{Checker: orch, Version: version}
+	srv := &mcp.Server{Version: version, Resolve: func(eco string) (mcp.Checker, error) {
+		return check.New(eco, ".")
+	}}
 	if err := srv.Serve(os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "mcp:", err)
 		return 1
@@ -291,11 +314,15 @@ func cmdMCP(args []string) int {
 }
 
 func cmdInit(args []string) int {
-	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: invoke-guard init <bash|zsh|powershell>")
+	if len(args) < 1 || len(args) > 2 {
+		fmt.Fprintln(os.Stderr, "usage: invoke-guard init <bash|zsh|powershell> [npm|pip|cargo]")
 		return 2
 	}
-	snippet, err := hook.Snippet(args[0])
+	mgr := "npm"
+	if len(args) == 2 {
+		mgr = args[1]
+	}
+	snippet, err := hook.SnippetFor(args[0], mgr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2

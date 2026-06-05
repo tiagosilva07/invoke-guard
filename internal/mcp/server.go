@@ -21,7 +21,8 @@ type Checker interface {
 
 // Server serves MCP over a reader/writer.
 type Server struct {
-	Checker Checker
+	// Resolve returns a Checker for the requested ecosystem ("npm","pypi","crates").
+	Resolve func(ecosystem string) (Checker, error)
 	Version string
 }
 

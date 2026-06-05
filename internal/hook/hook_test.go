@@ -34,6 +34,27 @@ func TestPowershellBareInstallNotChecked(t *testing.T) {
 	}
 }
 
+func TestManagerSnippets(t *testing.T) {
+	cases := []struct{ mgr, verb, ecoFlag string }{
+		{"pip", "install", "pypi"},
+		{"cargo", "add", "crates"},
+	}
+	for _, c := range cases {
+		s, err := SnippetFor("bash", c.mgr)
+		if err != nil {
+			t.Fatalf("%s: %v", c.mgr, err)
+		}
+		for _, want := range []string{c.mgr + "()", c.verb, "invoke-guard check --ecosystem " + c.ecoFlag, "command " + c.mgr} {
+			if !strings.Contains(s, want) {
+				t.Errorf("%s snippet missing %q:\n%s", c.mgr, want, s)
+			}
+		}
+	}
+	if _, err := SnippetFor("bash", "yarn"); err == nil {
+		t.Error("unknown manager should error")
+	}
+}
+
 func TestBashSnippetGatesAndPassesThrough(t *testing.T) {
 	if _, err := exec.LookPath("bash"); err != nil {
 		t.Skip("bash not available")

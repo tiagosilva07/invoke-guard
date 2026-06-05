@@ -1,0 +1,1 @@
+["requests","urllib3","setuptools","certifi","charset-normalizer","idna","six","python-dateutil","numpy","pyyaml","packaging","boto3","botocore","typing-extensions","wheel","pip","attrs","click","jinja2","markupsafe","flask","django","pandas","scipy","pytest","cryptography","pydantic","rich","aiohttp","sqlalchemy"]

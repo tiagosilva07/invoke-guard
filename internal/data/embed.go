@@ -16,3 +16,23 @@ func PopularNPM() []string {
 	_ = json.Unmarshal(popularNPMRaw, &out)
 	return out
 }
+
+//go:embed popular-pypi.json
+var popularPyPIRaw []byte
+
+//go:embed popular-crates.json
+var popularCratesRaw []byte
+
+// PopularPyPI returns the bundled top-PyPI names (normalized).
+func PopularPyPI() []string {
+	var out []string
+	_ = json.Unmarshal(popularPyPIRaw, &out)
+	return out
+}
+
+// PopularCrates returns the bundled top-crates names.
+func PopularCrates() []string {
+	var out []string
+	_ = json.Unmarshal(popularCratesRaw, &out)
+	return out
+}

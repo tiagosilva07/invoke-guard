@@ -6,6 +6,67 @@ package hook
 
 import "fmt"
 
+// SnippetFor renders the guard wrapper for a package manager: npm (default),
+// pip, or cargo. The wrapper gates the manager's add-dependency verb via
+// `invoke-guard check --ecosystem <eco>` and otherwise calls the real manager.
+func SnippetFor(shell, manager string) (string, error) {
+	var verb, eco string
+	switch manager {
+	case "npm", "":
+		return Snippet(shell) // existing npm wrapper
+	case "pip":
+		verb, eco = "install", "pypi"
+	case "cargo":
+		verb, eco = "add", "crates"
+	default:
+		return "", fmt.Errorf("unsupported manager %q (use npm, pip, or cargo)", manager)
+	}
+	switch shell {
+	case "bash", "zsh":
+		return posixManagerSnippet(manager, verb, eco), nil
+	case "powershell":
+		return powershellManagerSnippet(manager, verb, eco), nil
+	default:
+		return "", fmt.Errorf("unsupported shell %q (use bash, zsh, or powershell)", shell)
+	}
+}
+
+func posixManagerSnippet(mgr, verb, eco string) string {
+	return "# invoke-guard " + mgr + " guard — added by: eval \"$(invoke-guard init bash " + mgr + ")\"\n" +
+		mgr + "() {\n" +
+		"  if [ \"$1\" = \"" + verb + "\" ]; then\n" +
+		"    for __ig_arg in \"${@:2}\"; do\n" +
+		"      case \"$__ig_arg\" in\n" +
+		"        -*) : ;;\n" +
+		"        *)\n" +
+		"          if ! invoke-guard check --ecosystem " + eco + " \"$__ig_arg\"; then\n" +
+		"            echo \"invoke-guard: blocked \\\"$__ig_arg\\\" — override: invoke-guard allow $__ig_arg\" >&2\n" +
+		"            return 1\n" +
+		"          fi\n" +
+		"          ;;\n" +
+		"      esac\n" +
+		"    done\n" +
+		"  fi\n" +
+		"  command " + mgr + " \"$@\"\n" +
+		"}\n"
+}
+
+func powershellManagerSnippet(mgr, verb, eco string) string {
+	return "# invoke-guard " + mgr + " guard\n" +
+		"function " + mgr + " {\n" +
+		"  if ($args.Count -ge 2 -and $args[0] -eq '" + verb + "') {\n" +
+		"    foreach ($__ig_arg in $args[1..($args.Count-1)]) {\n" +
+		"      if ($__ig_arg -notlike '-*') {\n" +
+		"        & invoke-guard check --ecosystem " + eco + " $__ig_arg\n" +
+		"        if ($LASTEXITCODE -ne 0) { Write-Error \"invoke-guard: blocked $__ig_arg\"; return }\n" +
+		"      }\n" +
+		"    }\n" +
+		"  }\n" +
+		"  $__ig_real = Get-Command -CommandType Application " + mgr + " | Select-Object -First 1\n" +
+		"  & $__ig_real.Source @args\n" +
+		"}\n"
+}
+
 // Snippet returns the shell snippet for shell ("bash", "zsh", or "powershell").
 // The user adds it to their rc, e.g. eval "$(invoke-guard init zsh)".
 func Snippet(shell string) (string, error) {

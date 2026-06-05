@@ -6,8 +6,8 @@
 
 **Check a dependency before you install it.** Invoke Guard vets packages for
 typosquats, known-malicious names, hallucinated package names, and supply-chain
-anomalies — in milliseconds, before the install runs. **npm today; PyPI and crates
-on the roadmap** (the engine is ecosystem-agnostic by design).
+anomalies — in milliseconds, before the install runs. **Works with npm, PyPI, and
+crates.io** (one ecosystem-agnostic engine).
 
 ```
 $ invoke-guard check reqeust
@@ -111,6 +111,30 @@ $ invoke-guard scan --base /tmp/base-lock.json --head package-lock.json --sarif
 
 Emits SARIF 2.1.0 to stdout. Exit code 0 if no BLOCK; non-zero otherwise.
 Add `--strict` to treat WARN as failure.
+
+---
+
+## Ecosystems
+
+Guard supports **npm, PyPI, and crates.io**. Pick one with `--ecosystem` (default `npm`):
+
+```bash
+invoke-guard check --ecosystem pypi requests
+invoke-guard check --ecosystem crates serde
+invoke-guard install --ecosystem pypi flask        # vets, then runs pip install
+invoke-guard install --ecosystem crates serde      # vets, then runs cargo add
+```
+
+The shell hook and PR gate work per ecosystem too:
+
+```bash
+eval "$(invoke-guard init bash pip)"      # gate pip install
+eval "$(invoke-guard init bash cargo)"    # gate cargo add
+invoke-guard scan --ecosystem crates      # PR gate over Cargo.lock
+invoke-guard scan --ecosystem pypi        # PR gate over poetry.lock / requirements.txt
+```
+
+The MCP `check_package` tool takes an `ecosystem` argument (`npm`/`pypi`/`crates`).
 
 ---
 
@@ -258,8 +282,8 @@ shell hook, and the JSON/SARIF output. Read the code and verify the binary yours
 | Phase | Item |
 |---|---|
 | **v1** | npm CLI + PR gate + JSON/SARIF + self-hardening |
-| **v1.1** (now) | MCP server (`check_package`) + shell-hook (`invoke-guard init`) — shipped |
-| **v1.2** | PyPI + crates providers |
+| **v1.1** | MCP server (`check_package`) + shell-hook (`invoke-guard init`) — shipped |
+| **v1.2** (now) | PyPI + crates.io across check/install/hook/MCP/scan — shipped |
 | **v1.3** | Deep/sandbox behavioral check (opt-in signal) |
 
 The roadmap items drop in via the existing `Ecosystem`, `ThreatIntel`, `Policy`, and

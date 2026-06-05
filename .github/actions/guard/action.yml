@@ -4,16 +4,20 @@ inputs:
   strict:
     description: Treat warnings as failures
     default: "true"
+  ecosystem:
+    description: npm | pypi | crates
+    default: "npm"
 runs:
   using: composite
   steps:
     - shell: bash
       run: |
         set -euo pipefail
+        declare -A LOCK=( [npm]=package-lock.json [crates]=Cargo.lock [pypi]=poetry.lock )
+        f="${LOCK[${{ inputs.ecosystem }}]}"
         git fetch origin "${{ github.base_ref }}" --depth=1 || true
-        git show "origin/${{ github.base_ref }}:package-lock.json" > /tmp/base-lock.json 2>/dev/null || echo '{"packages":{}}' > /tmp/base-lock.json
-        STRICT=""
-        [ "${{ inputs.strict }}" = "true" ] && STRICT="--strict"
-        invoke-guard scan --base /tmp/base-lock.json --head package-lock.json --sarif $STRICT > guard.sarif || EXIT=$?
+        git show "origin/${{ github.base_ref }}:$f" > /tmp/base-lock 2>/dev/null || : > /tmp/base-lock
+        STRICT=""; [ "${{ inputs.strict }}" = "true" ] && STRICT="--strict"
+        invoke-guard scan --ecosystem "${{ inputs.ecosystem }}" --base /tmp/base-lock --head "$f" --sarif $STRICT > guard.sarif || EXIT=$?
         cat guard.sarif
         exit "${EXIT:-0}"
