@@ -38,3 +38,25 @@ func TestReorderFlagsFirst(t *testing.T) {
 		}
 	}
 }
+
+func TestUsageMentionsNewCommands(t *testing.T) {
+	u := usage()
+	for _, want := range []string{"mcp", "init"} {
+		if !strings.Contains(u, want) {
+			t.Errorf("usage missing %q", want)
+		}
+	}
+}
+
+func TestInitUnknownShellExits2(t *testing.T) {
+	if got := run([]string{"init", "fish"}); got != 2 {
+		t.Errorf("init fish exit = %d, want 2", got)
+	}
+}
+
+func TestInitBashPrintsSnippet(t *testing.T) {
+	// run() returns the exit code; just assert success for a known shell.
+	if got := run([]string{"init", "bash"}); got != 0 {
+		t.Errorf("init bash exit = %d, want 0", got)
+	}
+}

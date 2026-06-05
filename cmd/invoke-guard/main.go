@@ -12,6 +12,8 @@ import (
 
 	"github.com/tiagosilva07/invoke-guard/internal/check"
 	"github.com/tiagosilva07/invoke-guard/internal/data"
+	"github.com/tiagosilva07/invoke-guard/internal/hook"
+	"github.com/tiagosilva07/invoke-guard/internal/mcp"
 	"github.com/tiagosilva07/invoke-guard/internal/report"
 	"github.com/tiagosilva07/invoke-guard/internal/seam"
 	"github.com/tiagosilva07/invoke-guard/internal/verdict"
@@ -27,6 +29,8 @@ usage:
   invoke-guard install <names...> [--ignore-scripts] [--strict]
   invoke-guard allow <name>
   invoke-guard scan [--strict] [--json|--sarif]
+  invoke-guard mcp                                  (MCP server for AI agents; stdio)
+  invoke-guard init <bash|zsh|powershell>           (shell hook: gate npm install)
   invoke-guard --version
 `
 }
@@ -53,6 +57,10 @@ func run(args []string) int {
 		return cmdAllow(args[1:])
 	case "scan":
 		return cmdScan(args[1:])
+	case "mcp":
+		return cmdMCP(args[1:])
+	case "init":
+		return cmdInit(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n%s", args[0], usage())
 		return 2
@@ -262,6 +270,38 @@ func scanExit(verdicts []string, strict bool) int {
 		}
 	}
 	return worst
+}
+
+func cmdMCP(args []string) int {
+	if len(args) != 0 {
+		fmt.Fprintln(os.Stderr, "usage: invoke-guard mcp   (no flags; serves MCP over stdio)")
+		return 2
+	}
+	orch, err := check.NewNPM(".", loadPopular())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	srv := &mcp.Server{Checker: orch, Version: version}
+	if err := srv.Serve(os.Stdin, os.Stdout); err != nil {
+		fmt.Fprintln(os.Stderr, "mcp:", err)
+		return 1
+	}
+	return 0
+}
+
+func cmdInit(args []string) int {
+	if len(args) != 1 {
+		fmt.Fprintln(os.Stderr, "usage: invoke-guard init <bash|zsh|powershell>")
+		return 2
+	}
+	snippet, err := hook.Snippet(args[0])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	fmt.Println(snippet)
+	return 0
 }
 
 func loadPopular() []string { return data.PopularNPM() }
