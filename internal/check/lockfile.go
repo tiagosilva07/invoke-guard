@@ -18,6 +18,7 @@ type LockEntry struct {
 // LockChange records an existing entry whose resolved URL or integrity changed.
 type LockChange struct {
 	Name             string
+	Version          string // head version (for display)
 	OldResolved, New string
 	OldIntegrity     string
 	NewIntegrity     string
@@ -66,7 +67,7 @@ func DiffLockfiles(base, head []byte) (added []LockEntry, changed []LockChange, 
 		}
 		if be.Resolved != he.Resolved || be.Integrity != he.Integrity {
 			changed = append(changed, LockChange{
-				Name: name, OldResolved: be.Resolved, New: he.Resolved,
+				Name: name, Version: he.Version, OldResolved: be.Resolved, New: he.Resolved,
 				OldIntegrity: be.Integrity, NewIntegrity: he.Integrity,
 			})
 		}

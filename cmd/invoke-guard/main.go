@@ -224,7 +224,7 @@ func cmdScan(args []string) int {
 		results = append(results, orch.Check(context.Background(), a.Name, a.Version))
 	}
 	for _, c := range changed {
-		r := verdict.Decide("npm", c.Name, c.NewIntegrity, []verdict.Signal{check.LockfileIntegrity(c)})
+		r := verdict.Decide("npm", c.Name, c.Version, []verdict.Signal{check.LockfileIntegrity(c)})
 		results = append(results, r)
 	}
 	reporterFor(*asJSON, *asSARIF).Report(results)
