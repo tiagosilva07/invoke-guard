@@ -1,0 +1,49 @@
+name: Release
+on:
+  push: { tags: ["v*"] }
+permissions: {}
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # create release + assets
+      id-token: write        # cosign + provenance OIDC
+      attestations: write    # SLSA build provenance
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # pin: actions/checkout@v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # pin: actions/setup-go@v5
+        with: { go-version: "1.23" }
+      - name: Build all targets (CGO-free static)
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          VERSION="${GITHUB_REF_NAME}"
+          for os in linux darwin windows; do
+            for arch in amd64 arm64; do
+              ext=""; [ "$os" = windows ] && ext=".exe"
+              CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath \
+                -ldflags "-s -w -X main.version=${VERSION}" \
+                -o "dist/invoke-guard-${os}-${arch}${ext}" ./cmd/invoke-guard
+            done
+          done
+          cd dist && sha256sum invoke-guard-* > checksums.txt && cat checksums.txt
+      - name: SLSA build provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # pin: actions/attest-build-provenance@v2
+        with: { subject-path: 'dist/invoke-guard-*' }
+      - name: SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610  # pin: anchore/sbom-action@v0
+        with: { path: ., format: spdx-json, output-file: dist/invoke-guard.spdx.json, upload-artifact: false, upload-release-assets: false }
+      - name: Install cosign
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # pin: sigstore/cosign-installer@v3
+      - name: Sign (keyless)
+        run: cd dist && for f in invoke-guard-* checksums.txt invoke-guard.spdx.json; do cosign sign-blob --yes --bundle "${f}.cosign.bundle" "$f"; done
+      - name: Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # pin: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/invoke-guard-*
+            dist/checksums.txt
+            dist/*.cosign.bundle
+            dist/invoke-guard.spdx.json
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
