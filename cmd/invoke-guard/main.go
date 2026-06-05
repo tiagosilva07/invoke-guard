@@ -28,9 +28,9 @@ usage:
   invoke-guard check <name>[@version] [--ecosystem npm|pypi|crates] [--json|--sarif] [--strict]
   invoke-guard install <names...> [--ecosystem npm|pypi|crates] [--ignore-scripts] [--strict]
   invoke-guard allow <name>
-  invoke-guard scan [--strict] [--json|--sarif]
+  invoke-guard scan [--ecosystem npm|pypi|crates] [--base F] [--head F] [--strict] [--json|--sarif]
   invoke-guard mcp                                  (MCP server for AI agents; stdio)
-  invoke-guard init <bash|zsh|powershell>           (shell hook: gate npm install)
+  invoke-guard init <bash|zsh|powershell> [npm|pip|cargo]   (shell hook: gate installs)
   invoke-guard --version
 `
 }

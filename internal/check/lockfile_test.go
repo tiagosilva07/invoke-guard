@@ -88,3 +88,22 @@ func TestMaintainerChange(t *testing.T) {
 		t.Errorf("same maintainer should be info, got %v", s.Level)
 	}
 }
+
+func TestDiffLockfilesEco_EmptyBaseAllAdded(t *testing.T) {
+	// A missing/empty base lockfile must parse to no packages (all head deps "added"),
+	// for every ecosystem — npm's JSON parser must tolerate empty input too.
+	heads := map[string][]byte{
+		"npm":    []byte(`{"packages":{"node_modules/a":{"version":"1.0.0"}}}`),
+		"crates": []byte("[[package]]\nname = \"a\"\nversion = \"1.0.0\"\n"),
+		"pypi":   []byte("a==1.0.0\n"),
+	}
+	for eco, head := range heads {
+		added, _, err := DiffLockfilesEco(eco, nil, head)
+		if err != nil {
+			t.Fatalf("%s: empty base errored: %v", eco, err)
+		}
+		if len(added) != 1 || added[0].Name != "a" {
+			t.Fatalf("%s: want 1 added 'a', got %+v", eco, added)
+		}
+	}
+}

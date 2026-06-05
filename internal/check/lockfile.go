@@ -37,6 +37,9 @@ type npmLock struct {
 }
 
 func parseLock(b []byte) (map[string]LockEntry, error) {
+	if len(b) == 0 {
+		return map[string]LockEntry{}, nil // empty/missing base → no packages
+	}
 	var l npmLock
 	if err := json.Unmarshal(b, &l); err != nil {
 		return nil, err
