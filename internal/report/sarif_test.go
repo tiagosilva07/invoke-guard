@@ -21,12 +21,16 @@ func TestSARIFShapeMatchesPlatform(t *testing.T) {
 	var doc struct {
 		Runs []struct {
 			Tool struct {
-				Driver struct{ Name string `json:"name"` } `json:"driver"`
+				Driver struct {
+					Name string `json:"name"`
+				} `json:"driver"`
 			} `json:"tool"`
 			Results []struct {
 				RuleID  string `json:"ruleId"`
 				Level   string `json:"level"`
-				Message struct{ Text string `json:"text"` } `json:"message"`
+				Message struct {
+					Text string `json:"text"`
+				} `json:"message"`
 			} `json:"results"`
 		} `json:"runs"`
 	}
