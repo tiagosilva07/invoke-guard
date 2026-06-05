@@ -59,6 +59,21 @@ func run(args []string) int {
 	}
 }
 
+// reorderFlagsFirst moves leading-dash tokens ahead of operands so boolean flags
+// may appear after the package name(s). Safe only for commands whose flags are all
+// boolean (check, install); npm names never start with '-'.
+func reorderFlagsFirst(args []string) []string {
+	var flags, ops []string
+	for _, a := range args {
+		if strings.HasPrefix(a, "-") {
+			flags = append(flags, a)
+		} else {
+			ops = append(ops, a)
+		}
+	}
+	return append(flags, ops...)
+}
+
 func splitNameVersion(s string) (string, string) {
 	if i := strings.LastIndex(s, "@"); i > 0 { // i>0 keeps @scope intact
 		return s[:i], s[i+1:]
@@ -98,7 +113,7 @@ func cmdCheck(args []string) int {
 	asJSON := fs.Bool("json", false, "JSON output")
 	asSARIF := fs.Bool("sarif", false, "SARIF output")
 	strict := fs.Bool("strict", false, "treat WARN as failure")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderFlagsFirst(args)); err != nil {
 		return 2
 	}
 	if fs.NArg() != 1 {
@@ -120,7 +135,7 @@ func cmdInstall(args []string) int {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	ignoreScripts := fs.Bool("ignore-scripts", false, "pass --ignore-scripts to npm")
 	strict := fs.Bool("strict", false, "treat WARN as failure")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderFlagsFirst(args)); err != nil {
 		return 2
 	}
 	names := fs.Args()
@@ -171,6 +186,10 @@ func cmdAllow(args []string) int {
 	orch, err := check.NewNPM(".", nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	if err := orch.Eco.ValidateName(args[0]); err != nil {
+		fmt.Fprintln(os.Stderr, "invalid package name:", err)
 		return 2
 	}
 	if err := orch.Policy.Allow(args[0]); err != nil {

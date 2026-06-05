@@ -39,14 +39,15 @@ const (
 	RuleNewAndUnused      = "new-and-unused"
 	RuleLockfileIntegrity = "lockfile-integrity"
 	RuleMaintainerChange  = "maintainer-change"
+	RuleCheckError        = "check-error"
 )
 
 // Signal is one check's contribution to the verdict.
 type Signal struct {
-	Check   string // a Rule* constant
-	Level   Level
-	Message string // plain-language reason, shown to the user and in SARIF message.text
-	Suggest string // optional: a corrected package name (typosquat "did you mean")
+	Check   string `json:"check"`
+	Level   Level  `json:"level"`
+	Message string `json:"message"`
+	Suggest string `json:"suggest,omitempty"`
 }
 
 // Result is the full decision for one package.

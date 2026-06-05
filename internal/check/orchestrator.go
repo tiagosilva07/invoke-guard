@@ -29,7 +29,12 @@ func (o *Orchestrator) Check(ctx context.Context, name, version string) verdict.
 	}
 
 	var signals []verdict.Signal
-	exists, _ := o.Eco.Exists(ctx, name, version)
+	exists, err := o.Eco.Exists(ctx, name, version)
+	if err != nil {
+		return verdict.Decide(o.Eco.Name(), name, version, []verdict.Signal{
+			{Check: verdict.RuleCheckError, Level: verdict.LevelWarn, Message: "could not reach the registry to verify this package: " + err.Error()},
+		})
+	}
 	signals = append(signals, Existence(exists))
 	if !exists {
 		return verdict.Decide(o.Eco.Name(), name, version, signals)

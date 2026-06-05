@@ -32,7 +32,7 @@ func (s *SARIF) Report(results []verdict.Result) error {
 		Level   string `json:"level"`
 		Message msg    `json:"message"`
 	}
-	var out []result
+	out := []result{}
 	for _, r := range results {
 		for _, sig := range r.Signals {
 			if sig.Level == verdict.LevelInfo {

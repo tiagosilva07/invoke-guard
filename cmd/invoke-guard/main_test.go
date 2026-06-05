@@ -25,3 +25,16 @@ func TestUsageMentionsCommands(t *testing.T) {
 		t.Error("usage must list commands")
 	}
 }
+
+func TestReorderFlagsFirst(t *testing.T) {
+	got := reorderFlagsFirst([]string{"express", "--json", "lodash", "--strict"})
+	want := []string{"--json", "--strict", "express", "lodash"}
+	if len(got) != len(want) {
+		t.Fatalf("len=%d want %d (%v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v want %v", got, want)
+		}
+	}
+}

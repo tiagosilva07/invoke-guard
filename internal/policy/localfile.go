@@ -11,8 +11,8 @@ import (
 )
 
 type file struct {
-	Allow []string `json:"allow"`
-	Deny  []string `json:"deny"`
+	Allow []string `json:"allow,omitempty"`
+	Deny  []string `json:"deny,omitempty"`
 }
 
 type Local struct {

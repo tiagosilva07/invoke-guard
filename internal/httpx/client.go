@@ -41,6 +41,20 @@ func (c *Client) hostAllowed(u *url.URL) bool {
 	return c.allowed[u.Host] || c.allowed[u.Hostname()]
 }
 
+func isLoopback(host string) bool {
+	return host == "127.0.0.1" || host == "::1" || host == "localhost"
+}
+
+func schemeOK(u *url.URL) error {
+	if u.Scheme == "https" {
+		return nil
+	}
+	if u.Scheme == "http" && isLoopback(u.Hostname()) {
+		return nil // permit plaintext only to loopback (test servers)
+	}
+	return fmt.Errorf("only HTTPS is allowed (got scheme %q for host %q)", u.Scheme, u.Host)
+}
+
 // GetJSON GETs url and, on 200, decodes the body into out (may be nil to skip).
 // Returns the HTTP status code. A non-2xx is not an error (callers branch on code);
 // transport/SSRF problems are errors.
@@ -49,8 +63,8 @@ func (c *Client) GetJSON(ctx context.Context, rawurl string, out any) (int, erro
 	if err != nil {
 		return 0, err
 	}
-	if u.Scheme != "https" && u.Scheme != "http" {
-		return 0, fmt.Errorf("unsupported scheme %q", u.Scheme)
+	if err := schemeOK(u); err != nil {
+		return 0, err
 	}
 	if !c.hostAllowed(u) {
 		return 0, fmt.Errorf("host %q not in allowlist (SSRF guard)", u.Host)
@@ -81,6 +95,9 @@ func (c *Client) GetJSON(ctx context.Context, rawurl string, out any) (int, erro
 // and returns the status code + raw body (capped). For the few APIs (OSV) that
 // require POST. Body must already be set on req.
 func (c *Client) PostJSON(req *http.Request) (int, []byte, error) {
+	if err := schemeOK(req.URL); err != nil {
+		return 0, nil, err
+	}
 	if !c.hostAllowed(req.URL) {
 		return 0, nil, fmt.Errorf("host %q not in allowlist (SSRF guard)", req.URL.Host)
 	}

@@ -25,7 +25,11 @@ func (t *Text) Report(results []verdict.Result) error {
 		if !t.Color {
 			col, reset = "", ""
 		}
-		fmt.Fprintf(t.W, "%s%s %s@%s — %s%s\n", col, mark, r.Name, r.Version, r.VerdictStr, reset)
+		ver := r.Version
+		if ver == "" {
+			ver = "latest"
+		}
+		fmt.Fprintf(t.W, "%s%s %s@%s — %s%s\n", col, mark, r.Name, ver, r.VerdictStr, reset)
 		for _, s := range r.Signals {
 			if s.Level == verdict.LevelInfo || s.Message == "" {
 				continue
