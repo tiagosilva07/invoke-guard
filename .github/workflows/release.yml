@@ -37,13 +37,20 @@ jobs:
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # pin: sigstore/cosign-installer@v3
       - name: Sign (keyless)
         run: cd dist && for f in invoke-guard-* checksums.txt invoke-guard.spdx.json; do cosign sign-blob --yes --bundle "${f}.cosign.bundle" "$f"; done
-      - name: Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # pin: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/invoke-guard-*
-            dist/checksums.txt
-            dist/*.cosign.bundle
-            dist/invoke-guard.spdx.json
-          generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+      # Publish via the gh CLI — one reliable call that creates the release and
+      # uploads every asset together. (softprops/action-gh-release raced on
+      # per-asset metadata updates for the many .cosign.bundle files and left the
+      # release stuck as a draft.)
+      - name: Create GitHub Release + upload assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          prerelease=""
+          [[ "${GITHUB_REF_NAME}" == *-* ]] && prerelease="--prerelease"
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            $prerelease \
+            dist/invoke-guard-* dist/checksums.txt dist/*.cosign.bundle dist/invoke-guard.spdx.json
