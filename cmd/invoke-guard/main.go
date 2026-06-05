@@ -67,17 +67,28 @@ func run(args []string) int {
 	}
 }
 
-// reorderFlagsFirst moves leading-dash tokens ahead of operands so boolean flags
-// may appear after the package name(s). Safe only for commands whose flags are all
-// boolean (check, install); npm names never start with '-'.
-func reorderFlagsFirst(args []string) []string {
+// reorderFlagsFirst moves leading-dash tokens ahead of operands so flags may
+// appear after the package name(s). valueFlags names the flags that take a separate
+// value token (e.g. "ecosystem"): their value stays attached to the flag rather than
+// being mistaken for an operand. npm/pypi/crates names never start with '-'.
+func reorderFlagsFirst(args []string, valueFlags ...string) []string {
+	vf := map[string]bool{}
+	for _, f := range valueFlags {
+		vf["-"+f] = true
+		vf["--"+f] = true
+	}
 	var flags, ops []string
-	for _, a := range args {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
 		if strings.HasPrefix(a, "-") {
 			flags = append(flags, a)
-		} else {
-			ops = append(ops, a)
+			if vf[a] && i+1 < len(args) { // space-form value flag: keep its value
+				flags = append(flags, args[i+1])
+				i++
+			}
+			continue
 		}
+		ops = append(ops, a)
 	}
 	return append(flags, ops...)
 }
@@ -122,7 +133,7 @@ func cmdCheck(args []string) int {
 	asSARIF := fs.Bool("sarif", false, "SARIF output")
 	strict := fs.Bool("strict", false, "treat WARN as failure")
 	eco := fs.String("ecosystem", "npm", "npm|pypi|crates")
-	if err := fs.Parse(reorderFlagsFirst(args)); err != nil {
+	if err := fs.Parse(reorderFlagsFirst(args, "ecosystem")); err != nil {
 		return 2
 	}
 	if fs.NArg() != 1 {
@@ -145,7 +156,7 @@ func cmdInstall(args []string) int {
 	ignoreScripts := fs.Bool("ignore-scripts", false, "pass --ignore-scripts to npm")
 	strict := fs.Bool("strict", false, "treat WARN as failure")
 	eco := fs.String("ecosystem", "npm", "npm|pypi|crates")
-	if err := fs.Parse(reorderFlagsFirst(args)); err != nil {
+	if err := fs.Parse(reorderFlagsFirst(args, "ecosystem")); err != nil {
 		return 2
 	}
 	names := fs.Args()

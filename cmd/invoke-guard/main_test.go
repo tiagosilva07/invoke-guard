@@ -39,6 +39,17 @@ func TestReorderFlagsFirst(t *testing.T) {
 	}
 }
 
+func TestReorderFlagsFirst_ValueFlagKeepsValue(t *testing.T) {
+	// `check requests --ecosystem pypi` must not bind "requests" as the flag value.
+	got := reorderFlagsFirst([]string{"requests", "--ecosystem", "pypi"}, "ecosystem")
+	want := []string{"--ecosystem", "pypi", "requests"}
+	for i := range want {
+		if i >= len(got) || got[i] != want[i] {
+			t.Fatalf("got %v want %v", got, want)
+		}
+	}
+}
+
 func TestUsageMentionsNewCommands(t *testing.T) {
 	u := usage()
 	for _, want := range []string{"mcp", "init"} {
