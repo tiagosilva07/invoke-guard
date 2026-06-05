@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tiagosilva07/invoke-guard/internal/httpx"
+	"github.com/tiagosilva07/zyrax-guard/internal/httpx"
 )
 
 func newTestProvider(t *testing.T, h http.Handler) *Provider {

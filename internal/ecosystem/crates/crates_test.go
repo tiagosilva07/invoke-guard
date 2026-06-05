@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tiagosilva07/invoke-guard/internal/httpx"
+	"github.com/tiagosilva07/zyrax-guard/internal/httpx"
 )
 
 func newTestProvider(t *testing.T, h http.Handler) *Provider {
@@ -52,7 +52,7 @@ func TestExistsMetadataSendsUA(t *testing.T) {
 	if err != nil || md.Latest != "1.0.197" || md.WeeklyLoads != 98765432 {
 		t.Fatalf("metadata wrong: %+v err=%v", md, err)
 	}
-	if !strings.Contains(ua, "invoke-guard") {
+	if !strings.Contains(ua, "zyrax-guard") {
 		t.Errorf("crates.io needs a User-Agent; got %q", ua)
 	}
 	miss, _ := p.Exists(ctx, "nope-xyz-123", "")

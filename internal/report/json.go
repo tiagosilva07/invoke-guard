@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 const SchemaVersion = "1.0"

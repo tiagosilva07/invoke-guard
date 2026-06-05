@@ -1,6 +1,6 @@
 package check
 
-import "github.com/tiagosilva07/invoke-guard/internal/verdict"
+import "github.com/tiagosilva07/zyrax-guard/internal/verdict"
 
 // MaintainerChange flags when the publishing maintainer set gained a new account
 // versus a known-good baseline — an account-takeover / handoff signal.

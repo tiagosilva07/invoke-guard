@@ -1,5 +1,5 @@
 // Package policy implements seam.Policy backed by a project-local committed file
-// .invoke/policy.json — the OSS allow/deny source. (Org policy is a paid drop-in.)
+// .zyrax/policy.json — the OSS allow/deny source. (Org policy is a paid drop-in.)
 package policy
 
 import (
@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tiagosilva07/invoke-guard/internal/seam"
+	"github.com/tiagosilva07/zyrax-guard/internal/seam"
 )
 
 type file struct {
@@ -21,11 +21,11 @@ type Local struct {
 	deny  map[string]bool
 }
 
-// Load reads .invoke/policy.json under projectDir (creating neither dir nor file
+// Load reads .zyrax/policy.json under projectDir (creating neither dir nor file
 // until Allow is called). projectDir bounds all writes (no traversal).
 func Load(projectDir string) (*Local, error) {
 	p := &Local{
-		path:  filepath.Join(projectDir, ".invoke", "policy.json"),
+		path:  filepath.Join(projectDir, ".zyrax", "policy.json"),
 		allow: map[string]bool{},
 		deny:  map[string]bool{},
 	}
@@ -60,7 +60,7 @@ func (p *Local) Decide(name string) seam.Decision {
 	}
 }
 
-// Allow adds name to the allowlist and persists the file (creating .invoke/).
+// Allow adds name to the allowlist and persists the file (creating .zyrax/).
 func (p *Local) Allow(name string) error {
 	p.allow[name] = true
 	if err := os.MkdirAll(filepath.Dir(p.path), 0o755); err != nil {

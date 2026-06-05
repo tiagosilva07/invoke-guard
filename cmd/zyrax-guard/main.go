@@ -1,4 +1,4 @@
-// Command invoke-guard vets dependencies before install. Subcommands: check,
+// Command zyrax-guard vets dependencies before install. Subcommands: check,
 // install, allow, scan. Exit 0 for SAFE/WARN; non-zero for BLOCK (and for WARN
 // under --strict).
 package main
@@ -11,28 +11,28 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tiagosilva07/invoke-guard/internal/check"
-	"github.com/tiagosilva07/invoke-guard/internal/data"
-	"github.com/tiagosilva07/invoke-guard/internal/hook"
-	"github.com/tiagosilva07/invoke-guard/internal/mcp"
-	"github.com/tiagosilva07/invoke-guard/internal/report"
-	"github.com/tiagosilva07/invoke-guard/internal/seam"
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/check"
+	"github.com/tiagosilva07/zyrax-guard/internal/data"
+	"github.com/tiagosilva07/zyrax-guard/internal/hook"
+	"github.com/tiagosilva07/zyrax-guard/internal/mcp"
+	"github.com/tiagosilva07/zyrax-guard/internal/report"
+	"github.com/tiagosilva07/zyrax-guard/internal/seam"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 var version = "dev" // set via -ldflags at release
 
 func usage() string {
-	return `invoke-guard — check a dependency before you install it
+	return `zyrax-guard — check a dependency before you install it
 
 usage:
-  invoke-guard check <name>[@version] [--ecosystem npm|pypi|crates] [--json|--sarif] [--strict] [--deep]
-  invoke-guard install <names...> [--ecosystem npm|pypi|crates] [--ignore-scripts] [--strict] [--deep]
-  invoke-guard allow <name>
-  invoke-guard scan [--ecosystem npm|pypi|crates] [--base F] [--head F] [--strict] [--json|--sarif] [--deep]
-  invoke-guard mcp                                  (MCP server for AI agents; stdio)
-  invoke-guard init <bash|zsh|powershell> [npm|pip|cargo]   (shell hook: gate installs)
-  invoke-guard --version
+  zyrax-guard check <name>[@version] [--ecosystem npm|pypi|crates] [--json|--sarif] [--strict] [--deep]
+  zyrax-guard install <names...> [--ecosystem npm|pypi|crates] [--ignore-scripts] [--strict] [--deep]
+  zyrax-guard allow <name>
+  zyrax-guard scan [--ecosystem npm|pypi|crates] [--base F] [--head F] [--strict] [--json|--sarif] [--deep]
+  zyrax-guard mcp                                  (MCP server for AI agents; stdio)
+  zyrax-guard init <bash|zsh|powershell> [npm|pip|cargo]   (shell hook: gate installs)
+  zyrax-guard --version
 `
 }
 
@@ -184,7 +184,7 @@ func cmdInstall(args []string) int {
 	}
 	reporterFor(false, false).Report(results)
 	if worst != 0 {
-		fmt.Fprintln(os.Stderr, "blocked — not installing. Override with: invoke-guard allow <name>")
+		fmt.Fprintln(os.Stderr, "blocked — not installing. Override with: zyrax-guard allow <name>")
 		return worst
 	}
 	if err := orch.Eco.Install(context.Background(), bareNames(names), seam.InstallOpts{IgnoreScripts: *ignoreScripts}); err != nil {
@@ -220,7 +220,7 @@ func cmdAllow(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	fmt.Printf("allowed %q (recorded in .invoke/policy.json)\n", args[0])
+	fmt.Printf("allowed %q (recorded in .zyrax/policy.json)\n", args[0])
 	return 0
 }
 
@@ -328,7 +328,7 @@ func scanExit(verdicts []string, strict bool) int {
 
 func cmdMCP(args []string) int {
 	if len(args) != 0 {
-		fmt.Fprintln(os.Stderr, "usage: invoke-guard mcp   (no flags; serves MCP over stdio)")
+		fmt.Fprintln(os.Stderr, "usage: zyrax-guard mcp   (no flags; serves MCP over stdio)")
 		return 2
 	}
 	srv := &mcp.Server{Version: version, Resolve: func(eco string) (mcp.Checker, error) {
@@ -343,7 +343,7 @@ func cmdMCP(args []string) int {
 
 func cmdInit(args []string) int {
 	if len(args) < 1 || len(args) > 2 {
-		fmt.Fprintln(os.Stderr, "usage: invoke-guard init <bash|zsh|powershell> [npm|pip|cargo]")
+		fmt.Fprintln(os.Stderr, "usage: zyrax-guard init <bash|zsh|powershell> [npm|pip|cargo]")
 		return 2
 	}
 	mgr := "npm"

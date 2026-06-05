@@ -3,7 +3,7 @@ package check
 import (
 	"fmt"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 // Thresholds (conservative defaults; see spec §13 open question 1).

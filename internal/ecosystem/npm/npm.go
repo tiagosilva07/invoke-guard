@@ -10,9 +10,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/tiagosilva07/invoke-guard/internal/artifact"
-	"github.com/tiagosilva07/invoke-guard/internal/httpx"
-	"github.com/tiagosilva07/invoke-guard/internal/seam"
+	"github.com/tiagosilva07/zyrax-guard/internal/artifact"
+	"github.com/tiagosilva07/zyrax-guard/internal/httpx"
+	"github.com/tiagosilva07/zyrax-guard/internal/seam"
 )
 
 const (

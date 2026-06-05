@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 // Checker is the seam onto the verdict engine. *check.Orchestrator satisfies it.
@@ -107,6 +107,6 @@ func (s *Server) initializeResult(params json.RawMessage) map[string]any {
 	return map[string]any{
 		"protocolVersion": pv,
 		"capabilities":    map[string]any{"tools": map[string]any{}},
-		"serverInfo":      map[string]any{"name": "invoke-guard", "version": s.Version},
+		"serverInfo":      map[string]any{"name": "zyrax-guard", "version": s.Version},
 	}
 }

@@ -1,6 +1,6 @@
-# Invoke Guard — JSON output schema
+# Zyrax Guard — JSON output schema
 
-`invoke-guard check --json` (and `invoke-guard scan --json`) emits a versioned JSON
+`zyrax-guard check --json` (and `zyrax-guard scan --json`) emits a versioned JSON
 document. This document defines every field and the stability promise for downstream
 consumers.
 
@@ -54,7 +54,7 @@ Each element of `signals` is one check's contribution to the verdict.
 ## Example
 
 ```bash
-invoke-guard check reqeust --json
+zyrax-guard check reqeust --json
 ```
 
 ```json

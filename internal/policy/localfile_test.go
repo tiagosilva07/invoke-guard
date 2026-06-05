@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tiagosilva07/invoke-guard/internal/seam"
+	"github.com/tiagosilva07/zyrax-guard/internal/seam"
 )
 
 func TestLocalPolicyAllow(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tiagosilva07/invoke-guard/internal/httpx"
+	"github.com/tiagosilva07/zyrax-guard/internal/httpx"
 )
 
 func TestOSVLookup(t *testing.T) {

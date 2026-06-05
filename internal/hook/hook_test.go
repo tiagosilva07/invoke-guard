@@ -13,7 +13,7 @@ func TestSnippetStructure(t *testing.T) {
 			t.Fatalf("%s: %v", sh, err)
 		}
 		// Routes the install verbs and never recurses into the wrapper.
-		for _, want := range []string{"install", "add", "invoke-guard check"} {
+		for _, want := range []string{"install", "add", "zyrax-guard check"} {
 			if !strings.Contains(s, want) {
 				t.Errorf("%s snippet missing %q", sh, want)
 			}
@@ -44,7 +44,7 @@ func TestManagerSnippets(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", c.mgr, err)
 		}
-		for _, want := range []string{c.mgr + "()", c.verb, "invoke-guard check --ecosystem " + c.ecoFlag, "command " + c.mgr} {
+		for _, want := range []string{c.mgr + "()", c.verb, "zyrax-guard check --ecosystem " + c.ecoFlag, "command " + c.mgr} {
 			if !strings.Contains(s, want) {
 				t.Errorf("%s snippet missing %q:\n%s", c.mgr, want, s)
 			}
@@ -63,12 +63,12 @@ func TestBashSnippetGatesAndPassesThrough(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Stub `invoke-guard` (blocks "evil", allows others) and `command` is real.
+	// Stub `zyrax-guard` (blocks "evil", allows others) and `command` is real.
 	// Define a stub real npm by shadowing PATH lookup: we assert routing via echo.
 	script := `
 set -e
 ` + s + `
-invoke-guard() { case "$2" in evil) echo "BLOCK"; return 1;; *) return 0;; esac; }
+zyrax-guard() { case "$2" in evil) echo "BLOCK"; return 1;; *) return 0;; esac; }
 command() { shift; echo "REAL_NPM $*"; }   # stub the real npm call
 # install of a safe pkg → checks then runs real npm
 out_safe="$(npm install lodash 2>&1 || true)"

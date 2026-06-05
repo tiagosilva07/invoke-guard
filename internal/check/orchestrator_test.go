@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tiagosilva07/invoke-guard/internal/seam"
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/seam"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 type stubEco struct {

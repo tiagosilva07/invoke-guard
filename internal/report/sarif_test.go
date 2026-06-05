@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 func TestSARIFShapeMatchesPlatform(t *testing.T) {
@@ -38,7 +38,7 @@ func TestSARIFShapeMatchesPlatform(t *testing.T) {
 		t.Fatalf("sarif not parseable: %v", err)
 	}
 	r := doc.Runs[0]
-	if r.Tool.Driver.Name != "invoke-guard" {
+	if r.Tool.Driver.Name != "zyrax-guard" {
 		t.Errorf("driver name = %q", r.Tool.Driver.Name)
 	}
 	if len(r.Results) != 1 || r.Results[0].RuleID != "typosquat" || r.Results[0].Level != "error" {

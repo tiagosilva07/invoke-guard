@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 type Text struct {
@@ -40,7 +40,7 @@ func (t *Text) Report(results []verdict.Result) error {
 			fmt.Fprintf(t.W, "  did you mean: %s\n", r.Suggestion)
 		}
 		if r.Verdict == verdict.Block {
-			fmt.Fprintf(t.W, "  to override:  invoke-guard allow %s\n", r.Name)
+			fmt.Fprintf(t.W, "  to override:  zyrax-guard allow %s\n", r.Name)
 		}
 	}
 	return nil

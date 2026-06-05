@@ -1,8 +1,8 @@
 package check
 
 import (
-	"github.com/tiagosilva07/invoke-guard/internal/seam"
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/seam"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 // KnownBad turns advisories into a signal. Malware or high/critical severity →

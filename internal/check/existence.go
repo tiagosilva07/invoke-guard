@@ -1,6 +1,6 @@
 package check
 
-import "github.com/tiagosilva07/invoke-guard/internal/verdict"
+import "github.com/tiagosilva07/zyrax-guard/internal/verdict"
 
 // Existence turns a registry existence result into a signal. A non-existent
 // package is a strong signal of a hallucinated or trap name → BLOCK.

@@ -1,4 +1,4 @@
-# Contributing to Invoke Guard
+# Contributing to Zyrax Guard
 
 Thanks for helping make dependency vetting better. This document covers everything you
 need to build, test, and submit changes.
@@ -11,7 +11,7 @@ need to build, test, and submit changes.
 go build ./...
 ```
 
-The binary ends up at `./invoke-guard` (or `invoke-guard.exe` on Windows).
+The binary ends up at `./zyrax-guard` (or `zyrax-guard.exe` on Windows).
 
 No third-party dependencies — the module is stdlib-only at runtime. If a PR adds an
 import outside the standard library, it will be rejected.
@@ -98,7 +98,7 @@ failing on real popular packages that have been renamed/deprecated.
 
 ## Security stance
 
-Invoke Guard is itself a security tool. These invariants must **never regress**:
+Zyrax Guard is itself a security tool. These invariants must **never regress**:
 
 ### Command-injection safety
 

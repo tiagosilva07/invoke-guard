@@ -14,7 +14,7 @@ import (
 )
 
 // UserAgent identifies Guard to registries (crates.io rejects requests without one).
-const UserAgent = "invoke-guard (+https://github.com/tiagosilva07/invoke-guard)"
+const UserAgent = "zyrax-guard (+https://github.com/tiagosilva07/zyrax-guard)"
 
 type Client struct {
 	allowed map[string]bool

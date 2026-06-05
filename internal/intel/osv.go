@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/tiagosilva07/invoke-guard/internal/httpx"
-	"github.com/tiagosilva07/invoke-guard/internal/seam"
+	"github.com/tiagosilva07/zyrax-guard/internal/httpx"
+	"github.com/tiagosilva07/zyrax-guard/internal/seam"
 )
 
 // OSV queries https://api.osv.dev for advisories. It also folds in the bundled

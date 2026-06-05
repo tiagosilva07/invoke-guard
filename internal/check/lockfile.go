@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 // LockEntry is one resolved package in an npm lockfile (v2/v3 "packages" map).

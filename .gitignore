@@ -1,8 +1,8 @@
 /dist/
-/invoke-guard
-/invoke-guard.exe
+/zyrax-guard
+/zyrax-guard.exe
 *.out
-.invoke/
+.zyrax/
 # npm artifacts that hook tests may create in temp/working dirs
 node_modules/
 package-lock.json

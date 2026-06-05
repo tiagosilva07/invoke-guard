@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 type SARIF struct{ W io.Writer }
@@ -49,7 +49,7 @@ func (s *SARIF) Report(results []verdict.Result) error {
 		"version": "2.1.0",
 		"$schema": "https://json.schemastore.org/sarif-2.1.0.json",
 		"runs": []map[string]any{{
-			"tool":    map[string]any{"driver": map[string]any{"name": "invoke-guard"}},
+			"tool":    map[string]any{"driver": map[string]any{"name": "zyrax-guard"}},
 			"results": out,
 		}},
 	}

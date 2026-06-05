@@ -3,7 +3,7 @@ package check
 import (
 	"testing"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 func TestAnalyzeInstallScripts(t *testing.T) {

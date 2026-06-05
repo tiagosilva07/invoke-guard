@@ -1,5 +1,5 @@
 // Package hook renders shell snippets that wrap the package manager so that adding
-// a dependency is gated by invoke-guard. The wrapper checks each new package name
+// a dependency is gated by zyrax-guard. The wrapper checks each new package name
 // and, only if none is BLOCKed, runs the REAL package manager with the original
 // args (so npm's own flags and non-install subcommands are untouched).
 package hook
@@ -8,7 +8,7 @@ import "fmt"
 
 // SnippetFor renders the guard wrapper for a package manager: npm (default),
 // pip, or cargo. The wrapper gates the manager's add-dependency verb via
-// `invoke-guard check --ecosystem <eco>` and otherwise calls the real manager.
+// `zyrax-guard check --ecosystem <eco>` and otherwise calls the real manager.
 func SnippetFor(shell, manager string) (string, error) {
 	var verb, eco string
 	switch manager {
@@ -32,15 +32,15 @@ func SnippetFor(shell, manager string) (string, error) {
 }
 
 func posixManagerSnippet(mgr, verb, eco string) string {
-	return "# invoke-guard " + mgr + " guard — added by: eval \"$(invoke-guard init bash " + mgr + ")\"\n" +
+	return "# zyrax-guard " + mgr + " guard — added by: eval \"$(zyrax-guard init bash " + mgr + ")\"\n" +
 		mgr + "() {\n" +
 		"  if [ \"$1\" = \"" + verb + "\" ]; then\n" +
 		"    for __ig_arg in \"${@:2}\"; do\n" +
 		"      case \"$__ig_arg\" in\n" +
 		"        -*) : ;;\n" +
 		"        *)\n" +
-		"          if ! invoke-guard check --ecosystem " + eco + " \"$__ig_arg\"; then\n" +
-		"            echo \"invoke-guard: blocked \\\"$__ig_arg\\\" — override: invoke-guard allow $__ig_arg\" >&2\n" +
+		"          if ! zyrax-guard check --ecosystem " + eco + " \"$__ig_arg\"; then\n" +
+		"            echo \"zyrax-guard: blocked \\\"$__ig_arg\\\" — override: zyrax-guard allow $__ig_arg\" >&2\n" +
 		"            return 1\n" +
 		"          fi\n" +
 		"          ;;\n" +
@@ -52,13 +52,13 @@ func posixManagerSnippet(mgr, verb, eco string) string {
 }
 
 func powershellManagerSnippet(mgr, verb, eco string) string {
-	return "# invoke-guard " + mgr + " guard\n" +
+	return "# zyrax-guard " + mgr + " guard\n" +
 		"function " + mgr + " {\n" +
 		"  if ($args.Count -ge 2 -and $args[0] -eq '" + verb + "') {\n" +
 		"    foreach ($__ig_arg in $args[1..($args.Count-1)]) {\n" +
 		"      if ($__ig_arg -notlike '-*') {\n" +
-		"        & invoke-guard check --ecosystem " + eco + " $__ig_arg\n" +
-		"        if ($LASTEXITCODE -ne 0) { Write-Error \"invoke-guard: blocked $__ig_arg\"; return }\n" +
+		"        & zyrax-guard check --ecosystem " + eco + " $__ig_arg\n" +
+		"        if ($LASTEXITCODE -ne 0) { Write-Error \"zyrax-guard: blocked $__ig_arg\"; return }\n" +
 		"      }\n" +
 		"    }\n" +
 		"  }\n" +
@@ -68,7 +68,7 @@ func powershellManagerSnippet(mgr, verb, eco string) string {
 }
 
 // Snippet returns the shell snippet for shell ("bash", "zsh", or "powershell").
-// The user adds it to their rc, e.g. eval "$(invoke-guard init zsh)".
+// The user adds it to their rc, e.g. eval "$(zyrax-guard init zsh)".
 func Snippet(shell string) (string, error) {
 	switch shell {
 	case "bash", "zsh":
@@ -83,7 +83,7 @@ func Snippet(shell string) (string, error) {
 // posixSnippet works in bash and zsh (both support "${@:2}" array slicing). It
 // gates install/i/add by checking each non-flag arg, then calls the real npm via
 // `command npm` (never recursing into this function).
-const posixSnippet = `# invoke-guard npm guard — added by: eval "$(invoke-guard init bash)"
+const posixSnippet = `# zyrax-guard npm guard — added by: eval "$(zyrax-guard init bash)"
 npm() {
   case "$1" in
     install|i|add)
@@ -91,8 +91,8 @@ npm() {
         case "$__ig_arg" in
           -*) : ;;  # skip flags (e.g. --save-dev, -g)
           *)
-            if ! invoke-guard check "$__ig_arg"; then
-              echo "invoke-guard: blocked \"$__ig_arg\" — override with: invoke-guard allow $__ig_arg" >&2
+            if ! zyrax-guard check "$__ig_arg"; then
+              echo "zyrax-guard: blocked \"$__ig_arg\" — override with: zyrax-guard allow $__ig_arg" >&2
               return 1
             fi
             ;;
@@ -109,14 +109,14 @@ npm() {
 // via Get-Command -CommandType Application (the function itself is type Function).
 // Note: backtick is PowerShell's escape char; the string is built with concatenation
 // because Go raw-string literals cannot contain backtick characters.
-var powershellSnippet = "# invoke-guard npm guard — added by: Invoke-Expression (invoke-guard init powershell)\n" +
+var powershellSnippet = "# zyrax-guard npm guard — added by: Invoke-Expression (zyrax-guard init powershell)\n" +
 	"function npm {\n" +
 	"  if ($args.Count -ge 2 -and @('install','i','add') -contains $args[0]) {\n" +
 	"    foreach ($__ig_arg in $args[1..($args.Count-1)]) {\n" +
 	"      if ($__ig_arg -notlike '-*') {\n" +
-	"        & invoke-guard check $__ig_arg\n" +
+	"        & zyrax-guard check $__ig_arg\n" +
 	"        if ($LASTEXITCODE -ne 0) {\n" +
-	"          Write-Error \"invoke-guard: blocked `\"$__ig_arg`\" — override with: invoke-guard allow $__ig_arg\"\n" +
+	"          Write-Error \"zyrax-guard: blocked `\"$__ig_arg`\" — override with: zyrax-guard allow $__ig_arg\"\n" +
 	"          return\n" +
 	"        }\n" +
 	"      }\n" +

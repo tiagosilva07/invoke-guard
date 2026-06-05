@@ -63,8 +63,8 @@ func TestGetJSON_SendsUserAgent(t *testing.T) {
 	if _, err := c.GetJSON(context.Background(), srv.URL, nil); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(ua, "invoke-guard") {
-		t.Errorf("User-Agent = %q, want it to contain invoke-guard", ua)
+	if !strings.Contains(ua, "zyrax-guard") {
+		t.Errorf("User-Agent = %q, want it to contain zyrax-guard", ua)
 	}
 }
 

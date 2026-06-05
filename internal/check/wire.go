@@ -3,14 +3,14 @@ package check
 import (
 	"fmt"
 
-	"github.com/tiagosilva07/invoke-guard/internal/data"
-	"github.com/tiagosilva07/invoke-guard/internal/ecosystem/crates"
-	"github.com/tiagosilva07/invoke-guard/internal/ecosystem/npm"
-	"github.com/tiagosilva07/invoke-guard/internal/ecosystem/pypi"
-	"github.com/tiagosilva07/invoke-guard/internal/httpx"
-	"github.com/tiagosilva07/invoke-guard/internal/intel"
-	"github.com/tiagosilva07/invoke-guard/internal/policy"
-	"github.com/tiagosilva07/invoke-guard/internal/seam"
+	"github.com/tiagosilva07/zyrax-guard/internal/data"
+	"github.com/tiagosilva07/zyrax-guard/internal/ecosystem/crates"
+	"github.com/tiagosilva07/zyrax-guard/internal/ecosystem/npm"
+	"github.com/tiagosilva07/zyrax-guard/internal/ecosystem/pypi"
+	"github.com/tiagosilva07/zyrax-guard/internal/httpx"
+	"github.com/tiagosilva07/zyrax-guard/internal/intel"
+	"github.com/tiagosilva07/zyrax-guard/internal/policy"
+	"github.com/tiagosilva07/zyrax-guard/internal/seam"
 )
 
 // New wires an orchestrator for the named ecosystem (npm, pypi, crates) with a

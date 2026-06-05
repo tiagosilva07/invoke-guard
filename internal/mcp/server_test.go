@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 type fakeChecker struct{ res verdict.Result }
@@ -78,7 +78,7 @@ func TestInitializeAndToolsList(t *testing.T) {
 	if init["protocolVersion"] != "2025-06-18" {
 		t.Errorf("protocolVersion = %v", init["protocolVersion"])
 	}
-	if init["serverInfo"].(map[string]any)["name"] != "invoke-guard" {
+	if init["serverInfo"].(map[string]any)["name"] != "zyrax-guard" {
 		t.Errorf("serverInfo.name wrong: %v", init["serverInfo"])
 	}
 	tools := resps[1]["result"].(map[string]any)["tools"].([]any)

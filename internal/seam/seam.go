@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/tiagosilva07/invoke-guard/internal/verdict"
+	"github.com/tiagosilva07/zyrax-guard/internal/verdict"
 )
 
 // Metadata is the registry facts a check needs.
