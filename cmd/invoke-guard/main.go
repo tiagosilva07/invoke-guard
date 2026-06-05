@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/tiagosilva07/invoke-guard/internal/check"
+	"github.com/tiagosilva07/invoke-guard/internal/data"
 	"github.com/tiagosilva07/invoke-guard/internal/report"
 	"github.com/tiagosilva07/invoke-guard/internal/seam"
 	"github.com/tiagosilva07/invoke-guard/internal/verdict"
@@ -244,4 +245,4 @@ func scanExit(verdicts []string, strict bool) int {
 	return worst
 }
 
-func loadPopular() []string { return nil }
+func loadPopular() []string { return data.PopularNPM() }
