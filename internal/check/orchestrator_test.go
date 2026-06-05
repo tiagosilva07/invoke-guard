@@ -34,16 +34,19 @@ func (s stubPolicy) Decide(string) seam.Decision { return s.d }
 func (s stubPolicy) Allow(string) error          { return nil }
 
 func TestOrchestrator(t *testing.T) {
-	old := seam.Metadata{Exists: true, Published: time.Now().AddDate(-5, 0, 0), WeeklyLoads: 9_000_000}
+	old := seam.Metadata{Exists: true, Published: time.Now().AddDate(-5, 0, 0), WeeklyLoads: 9_000_000, Latest: "4.19.2"}
 	o := &Orchestrator{
 		Eco:    stubEco{exists: true, md: old, pop: []string{"express"}},
 		Intel:  stubIntel{},
 		Policy: stubPolicy{d: seam.Defer},
 	}
-	// express-like: safe
+	// express-like: safe, bare install resolves to latest
 	r := o.Check(context.Background(), "express", "")
 	if r.Verdict != verdict.Safe {
 		t.Errorf("popular old pkg should be SAFE, got %v (%+v)", r.Verdict, r.Signals)
+	}
+	if r.Version != "4.19.2" {
+		t.Errorf("r.Version = %q, want 4.19.2 (resolved from Latest)", r.Version)
 	}
 	// typosquat: reqeust with near-zero downloads
 	o.Eco = stubEco{exists: true, md: seam.Metadata{Exists: true, WeeklyLoads: 2, Published: time.Now()}, pop: []string{"express", "request"}}

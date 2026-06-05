@@ -76,6 +76,9 @@ type packument struct {
 	Repository struct {
 		URL string `json:"url"`
 	} `json:"repository"`
+	DistTags struct {
+		Latest string `json:"latest"`
+	} `json:"dist-tags"`
 }
 
 type downloadsPoint struct {
@@ -98,6 +101,7 @@ func (p *Provider) Metadata(ctx context.Context, name string) (seam.Metadata, er
 		Exists:    true,
 		Published: pk.Time.Created,
 		RepoURL:   pk.Repository.URL,
+		Latest:    pk.DistTags.Latest,
 	}
 	for _, m := range pk.Maintainers {
 		md.Maintainers = append(md.Maintainers, m.Name)

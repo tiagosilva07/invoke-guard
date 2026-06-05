@@ -41,7 +41,7 @@ func TestExistsAndMetadata(t *testing.T) {
 		case strings.Contains(r.URL.Path, "/point/last-week/"):
 			w.Write([]byte(`{"downloads":30000000}`))
 		case strings.Contains(r.URL.Path, "/express"):
-			w.Write([]byte(`{"time":{"created":"2010-01-01T00:00:00Z"},"maintainers":[{"name":"tj"}],"repository":{"url":"git+https://github.com/expressjs/express.git"}}`))
+			w.Write([]byte(`{"time":{"created":"2010-01-01T00:00:00Z"},"maintainers":[{"name":"tj"}],"repository":{"url":"git+https://github.com/expressjs/express.git"},"dist-tags":{"latest":"4.19.2"}}`))
 
 		default:
 			http.Error(w, "not found", http.StatusNotFound)
@@ -55,6 +55,9 @@ func TestExistsAndMetadata(t *testing.T) {
 	md, err := p.Metadata(ctx, "express")
 	if err != nil || md.WeeklyLoads != 30000000 || len(md.Maintainers) != 1 {
 		t.Fatalf("metadata wrong: %+v err=%v", md, err)
+	}
+	if md.Latest != "4.19.2" {
+		t.Errorf("md.Latest = %q, want 4.19.2", md.Latest)
 	}
 	miss, _ := p.Exists(ctx, "definitely-not-real-xyz", "")
 	if miss {

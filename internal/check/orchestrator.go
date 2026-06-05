@@ -35,6 +35,9 @@ func (o *Orchestrator) Check(ctx context.Context, name, version string) verdict.
 		return verdict.Decide(o.Eco.Name(), name, version, signals)
 	}
 	md, _ := o.Eco.Metadata(ctx, name)
+	if version == "" {
+		version = md.Latest // check the version a bare install would actually pull
+	}
 	signals = append(signals, Typosquat(name, md.WeeklyLoads, o.Eco.PopularList()))
 	signals = append(signals, Popularity(md))
 	if advs, err := o.Intel.Lookup(ctx, o.Eco.Name(), name, version); err == nil {

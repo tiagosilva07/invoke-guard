@@ -17,6 +17,7 @@ type Metadata struct {
 	Maintainers []string // stable identifiers (e.g. npm usernames)
 	RepoURL     string
 	Exists      bool
+	Latest      string // dist-tags latest version (the version a bare install resolves to)
 }
 
 // Advisory is one known-bad record (from OSV or the bundled denylist).
