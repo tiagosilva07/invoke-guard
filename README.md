@@ -1,8 +1,13 @@
 # Invoke Guard
 
-**Check a dependency before you install it.** Invoke Guard vets npm packages for
+[![CI](https://github.com/tiagosilva07/invoke-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/tiagosilva07/invoke-guard/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tiagosilva07/invoke-guard)](https://goreportcard.com/report/github.com/tiagosilva07/invoke-guard)
+
+**Check a dependency before you install it.** Invoke Guard vets packages for
 typosquats, known-malicious names, hallucinated package names, and supply-chain
-anomalies — in milliseconds, before `npm install` runs.
+anomalies — in milliseconds, before the install runs. **npm today; PyPI and crates
+on the roadmap** (the engine is ecosystem-agnostic by design).
 
 ```
 $ invoke-guard check reqeust
@@ -19,10 +24,21 @@ phones home except the public package name you are querying.
 
 ## Install
 
-### From source (Go 1.23+)
+### `go install` (Go 1.23+)
 
 ```bash
 go install github.com/tiagosilva07/invoke-guard/cmd/invoke-guard@latest
+```
+
+> `@latest` resolves once the first release is tagged. Before then, pin a branch
+> (`@main`) or build from source below.
+
+### Build from source
+
+```bash
+git clone https://github.com/tiagosilva07/invoke-guard
+cd invoke-guard
+go build -o invoke-guard ./cmd/invoke-guard
 ```
 
 ### Signed release binary
@@ -155,7 +171,9 @@ natively, and a shell hook auto-intercepts all `npm install` calls transparently
 
 ## Using in CI
 
-### GitHub Action (PR gate)
+### GitHub Actions (PR gate)
+
+Install the binary, then gate the PR on its lockfile diff against the target branch:
 
 ```yaml
 # .github/workflows/guard.yml
@@ -165,15 +183,24 @@ jobs:
   guard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - uses: ./.github/actions/guard
-        with:
-          strict: "true"   # WARN also fails the PR
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.26" }
+      - run: go install github.com/tiagosilva07/invoke-guard/cmd/invoke-guard@latest
+      - name: Guard new dependencies
+        run: |
+          git show "origin/${{ github.base_ref }}:package-lock.json" > /tmp/base-lock.json 2>/dev/null || echo '{"packages":{}}' > /tmp/base-lock.json
+          invoke-guard scan --base /tmp/base-lock.json --head package-lock.json --strict --sarif > guard.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: guard.sarif }
 ```
 
-The action diffs the PR's `package-lock.json` against the target branch, checks only
-newly added or changed dependencies, and emits SARIF (uploadable to GitHub Code Scanning
-or the Invoke platform).
+It checks only **newly added or changed** dependencies (fast, no re-flagging the whole
+tree), fails the PR on any BLOCK (and WARN under `--strict`), and uploads SARIF to GitHub
+Code Scanning. (Inside this repo, the bundled composite action at
+`.github/actions/guard` wraps the same `scan` call.)
 
 ### Raw CLI in CI
 
