@@ -95,6 +95,42 @@ func (c *Client) GetJSON(ctx context.Context, rawurl string, out any) (int, erro
 	return resp.StatusCode, nil
 }
 
+// GetBytes downloads url's body (host-allowlisted, following allowed redirects)
+// up to maxBytes; a body exceeding maxBytes is an error (tar-bomb / abuse guard).
+func (c *Client) GetBytes(ctx context.Context, rawurl string, maxBytes int64) (int, []byte, error) {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return 0, nil, err
+	}
+	if err := schemeOK(u); err != nil {
+		return 0, nil, err
+	}
+	if !c.hostAllowed(u) {
+		return 0, nil, fmt.Errorf("host %q not in allowlist (SSRF guard)", u.Host)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawurl, nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	req.Header.Set("User-Agent", UserAgent)
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return resp.StatusCode, nil, nil
+	}
+	b, err := io.ReadAll(io.LimitReader(resp.Body, maxBytes+1))
+	if err != nil {
+		return resp.StatusCode, nil, err
+	}
+	if int64(len(b)) > maxBytes {
+		return resp.StatusCode, nil, fmt.Errorf("response exceeds %d bytes", maxBytes)
+	}
+	return resp.StatusCode, b, nil
+}
+
 // PostJSON sends an already-built POST request, enforcing the same host allowlist,
 // and returns the status code + raw body (capped). For the few APIs (OSV) that
 // require POST. Body must already be set on req.

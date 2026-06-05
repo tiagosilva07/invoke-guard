@@ -67,3 +67,30 @@ func TestGetJSON_SendsUserAgent(t *testing.T) {
 		t.Errorf("User-Agent = %q, want it to contain invoke-guard", ua)
 	}
 }
+
+func TestGetBytes_CapAndHost(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello-bytes"))
+	}))
+	defer srv.Close()
+	c := New([]string{srv.Listener.Addr().String()})
+	code, b, err := c.GetBytes(context.Background(), srv.URL, 1024)
+	if err != nil || code != 200 || string(b) != "hello-bytes" {
+		t.Fatalf("code=%d b=%q err=%v", code, b, err)
+	}
+	if _, _, err := c.GetBytes(context.Background(), "https://evil.example/x", 1024); err == nil {
+		t.Fatal("disallowed host must error")
+	}
+}
+
+func TestGetBytes_OverCap(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(make([]byte, 5000))
+	}))
+	defer srv.Close()
+	c := New([]string{srv.Listener.Addr().String()})
+	_, _, err := c.GetBytes(context.Background(), srv.URL, 1024)
+	if err == nil {
+		t.Fatal("over-cap body must error")
+	}
+}
