@@ -159,6 +159,27 @@ PR-gate (`scan`) additionally runs:
 
 ---
 
+## Deep check (`--deep`)
+
+By default Guard checks are metadata-only (milliseconds). Add `--deep` to also download the
+package's distribution artifact and **statically analyze the code it runs at install/build
+time** — npm `preinstall`/`install`/`postinstall` scripts, PyPI `setup.py`, crates `build.rs`:
+
+```bash
+invoke-guard check --deep --ecosystem npm some-pkg
+invoke-guard scan --deep --ecosystem pypi          # PR gate, deep
+```
+
+It flags red flags — network calls, process spawning, base64/obfuscated `eval`, and
+sensitive-file/env access — and **BLOCKs** on the dangerous combinations (e.g. "download a
+script and run it"). It runs **no code** (purely static) and is **best-effort**: if the
+artifact can't be fetched, you get an informational note, never a false block. Agents can pass
+`deep: true` to the `check_package` MCP tool.
+
+Zero added dependencies — the extractor uses stdlib `archive/tar` + `compress/gzip` only.
+
+---
+
 ## The three verdicts
 
 | Verdict | Meaning | Default exit code |
@@ -187,19 +208,21 @@ claude mcp add invoke-guard -- invoke-guard mcp
 The agent gets a `check_package` tool that returns SAFE / WARN / BLOCK with reasons.
 (Cursor / Windsurf: add an equivalent `mcpServers` entry running `invoke-guard mcp`.)
 
-**Transparent shell hook:** gate every `npm install` automatically — add to your shell rc:
+**Transparent shell hook:** gate `npm install` / `pip install` / `cargo add` automatically — add to your shell rc:
 
 ```bash
 # ~/.bashrc or ~/.zshrc
-eval "$(invoke-guard init bash)"     # or: init zsh
+eval "$(invoke-guard init bash)"          # npm (default)
+eval "$(invoke-guard init bash pip)"      # pip
+eval "$(invoke-guard init bash cargo)"    # cargo
 ```
 ```powershell
 # PowerShell $PROFILE
 Invoke-Expression (invoke-guard init powershell | Out-String)
 ```
 
-The hook checks each newly added package and blocks a BLOCK before the real `npm` runs;
-non-install commands (`npm run`, `npm ci`, …) pass through untouched.
+The hook checks each newly added package and blocks before the real installer runs;
+non-install commands pass through untouched.
 
 **Or route installs manually:** `invoke-guard install <pkg>` checks, then installs only if
 nothing is blocked.
@@ -283,8 +306,8 @@ shell hook, and the JSON/SARIF output. Read the code and verify the binary yours
 |---|---|
 | **v1** | npm CLI + PR gate + JSON/SARIF + self-hardening |
 | **v1.1** | MCP server (`check_package`) + shell-hook (`invoke-guard init`) — shipped |
-| **v1.2** (now) | PyPI + crates.io across check/install/hook/MCP/scan — shipped |
-| **v1.3** | Deep/sandbox behavioral check (opt-in signal) |
+| **v1.2** | PyPI + crates.io across check/install/hook/MCP/scan — shipped |
+| **v1.3** (now) | Deep check (`--deep`): static install/build-script analysis — shipped |
 
 The roadmap items drop in via the existing `Ecosystem`, `ThreatIntel`, `Policy`, and
 `Reporter` seams — no re-architecting required.
