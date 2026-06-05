@@ -39,6 +39,17 @@ func TestReorderFlagsFirst(t *testing.T) {
 	}
 }
 
+func TestReorderFlagsFirst_ValueFlagKeepsValue(t *testing.T) {
+	// `check requests --ecosystem pypi` must not bind "requests" as the flag value.
+	got := reorderFlagsFirst([]string{"requests", "--ecosystem", "pypi"}, "ecosystem")
+	want := []string{"--ecosystem", "pypi", "requests"}
+	for i := range want {
+		if i >= len(got) || got[i] != want[i] {
+			t.Fatalf("got %v want %v", got, want)
+		}
+	}
+}
+
 func TestUsageMentionsNewCommands(t *testing.T) {
 	u := usage()
 	for _, want := range []string{"mcp", "init"} {
@@ -58,5 +69,17 @@ func TestInitBashPrintsSnippet(t *testing.T) {
 	// run() returns the exit code; just assert success for a known shell.
 	if got := run([]string{"init", "bash"}); got != 0 {
 		t.Errorf("init bash exit = %d, want 0", got)
+	}
+}
+
+func TestCheckUnknownEcosystemExits2(t *testing.T) {
+	if got := run([]string{"check", "--ecosystem", "bogus", "x"}); got != 2 {
+		t.Errorf("unknown ecosystem exit = %d, want 2", got)
+	}
+}
+
+func TestUsageMentionsEcosystem(t *testing.T) {
+	if !strings.Contains(usage(), "--ecosystem") {
+		t.Error("usage should mention --ecosystem")
 	}
 }

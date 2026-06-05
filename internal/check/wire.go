@@ -1,27 +1,56 @@
 package check
 
 import (
+	"fmt"
+
+	"github.com/tiagosilva07/invoke-guard/internal/data"
+	"github.com/tiagosilva07/invoke-guard/internal/ecosystem/crates"
 	"github.com/tiagosilva07/invoke-guard/internal/ecosystem/npm"
+	"github.com/tiagosilva07/invoke-guard/internal/ecosystem/pypi"
 	"github.com/tiagosilva07/invoke-guard/internal/httpx"
 	"github.com/tiagosilva07/invoke-guard/internal/intel"
 	"github.com/tiagosilva07/invoke-guard/internal/policy"
 	"github.com/tiagosilva07/invoke-guard/internal/seam"
 )
 
-// NewNPM wires the default npm orchestrator: hardened HTTP client allowlisting the
-// npm + OSV hosts, the npm provider with the bundled popular list, OSV intel, and
-// the project-local policy.
-func NewNPM(projectDir string, popular []string) (*Orchestrator, error) {
-	client := httpx.New([]string{npm.RegistryHost, npm.DownloadsHost, intel.OSVHost})
+// New wires an orchestrator for the named ecosystem (npm, pypi, crates) with a
+// hardened HTTP client allowlisting just that ecosystem's hosts + OSV, the bundled
+// popular list, OSV intel, and the project-local policy.
+func New(ecosystem, projectDir string) (*Orchestrator, error) {
 	pol, err := policy.Load(projectDir)
 	if err != nil {
 		return nil, err
 	}
+	var (
+		eco   seam.Ecosystem
+		hosts []string
+	)
+	switch ecosystem {
+	case "npm":
+		hosts = []string{npm.RegistryHost, npm.DownloadsHost, intel.OSVHost}
+		eco = npm.New(httpx.New(hosts), data.PopularNPM())
+	case "pypi":
+		hosts = []string{pypi.RegistryHost, pypi.StatsHost, intel.OSVHost}
+		eco = pypi.New(httpx.New(hosts), data.PopularPyPI())
+	case "crates":
+		hosts = []string{crates.Host, intel.OSVHost}
+		eco = crates.New(httpx.New(hosts), data.PopularCrates())
+	default:
+		return nil, fmt.Errorf("unsupported ecosystem %q (use npm, pypi, or crates)", ecosystem)
+	}
+	// The intel client may talk to OSV for any ecosystem; build it on a client that
+	// allows OSV (each provider's client above already includes intel.OSVHost).
 	return &Orchestrator{
-		Eco:    npm.New(client, popular),
-		Intel:  intel.NewOSV(client),
+		Eco:    eco,
+		Intel:  intel.NewOSV(httpx.New([]string{intel.OSVHost})),
 		Policy: pol,
 	}, nil
+}
+
+// NewNPM is kept for back-compat; it builds the npm orchestrator. The popular arg
+// is ignored in favour of the bundled list (callers pass loadPopular()/nil).
+func NewNPM(projectDir string, _ []string) (*Orchestrator, error) {
+	return New("npm", projectDir)
 }
 
 var _ seam.Policy = (*policy.Local)(nil)

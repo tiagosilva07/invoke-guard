@@ -18,7 +18,7 @@ func checkPackageTool() map[string]any {
 			"properties": map[string]any{
 				"name":      map[string]any{"type": "string", "description": "package name to check"},
 				"version":   map[string]any{"type": "string", "description": "optional; defaults to the latest published version"},
-				"ecosystem": map[string]any{"type": "string", "enum": []string{"npm"}, "default": "npm"},
+				"ecosystem": map[string]any{"type": "string", "enum": []string{"npm", "pypi", "crates"}, "default": "npm"},
 			},
 			"required": []string{"name"},
 		},
@@ -29,8 +29,9 @@ func (s *Server) toolsCall(params json.RawMessage) map[string]any {
 	var p struct {
 		Name      string `json:"name"`
 		Arguments struct {
-			Name    string `json:"name"`
-			Version string `json:"version"`
+			Name      string `json:"name"`
+			Version   string `json:"version"`
+			Ecosystem string `json:"ecosystem"`
 		} `json:"arguments"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil || p.Name != "check_package" {
@@ -39,7 +40,15 @@ func (s *Server) toolsCall(params json.RawMessage) map[string]any {
 	if strings.TrimSpace(p.Arguments.Name) == "" {
 		return toolError("missing required argument: name")
 	}
-	res := s.Checker.Check(context.Background(), p.Arguments.Name, p.Arguments.Version)
+	eco := p.Arguments.Ecosystem
+	if eco == "" {
+		eco = "npm"
+	}
+	checker, err := s.Resolve(eco)
+	if err != nil {
+		return toolError(err.Error())
+	}
+	res := checker.Check(context.Background(), p.Arguments.Name, p.Arguments.Version)
 	structured, _ := json.Marshal(res)
 	text := renderForAgent(res) + "\n\n" + string(structured)
 	return map[string]any{

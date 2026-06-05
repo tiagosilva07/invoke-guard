@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -48,5 +49,21 @@ func TestPostJSON_DisallowedHost(t *testing.T) {
 	_, _, err := c.PostJSON(req)
 	if err == nil {
 		t.Fatal("expected host-not-allowed error (SSRF guard)")
+	}
+}
+
+func TestGetJSON_SendsUserAgent(t *testing.T) {
+	var ua string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ua = r.Header.Get("User-Agent")
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	c := New([]string{srv.Listener.Addr().String()})
+	if _, err := c.GetJSON(context.Background(), srv.URL, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(ua, "invoke-guard") {
+		t.Errorf("User-Agent = %q, want it to contain invoke-guard", ua)
 	}
 }

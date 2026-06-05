@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+// UserAgent identifies Guard to registries (crates.io rejects requests without one).
+const UserAgent = "invoke-guard (+https://github.com/tiagosilva07/invoke-guard)"
+
 type Client struct {
 	allowed map[string]bool
 	hc      *http.Client
@@ -74,6 +77,7 @@ func (c *Client) GetJSON(ctx context.Context, rawurl string, out any) (int, erro
 		return 0, err
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", UserAgent)
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return 0, err
@@ -100,6 +104,9 @@ func (c *Client) PostJSON(req *http.Request) (int, []byte, error) {
 	}
 	if !c.hostAllowed(req.URL) {
 		return 0, nil, fmt.Errorf("host %q not in allowlist (SSRF guard)", req.URL.Host)
+	}
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", UserAgent)
 	}
 	resp, err := c.hc.Do(req)
 	if err != nil {

@@ -24,7 +24,7 @@ func run(t *testing.T, c Checker, lines ...string) []map[string]any {
 	t.Helper()
 	in := strings.NewReader(strings.Join(lines, "\n") + "\n")
 	var out strings.Builder
-	srv := &Server{Checker: c, Version: "test"}
+	srv := &Server{Version: "test", Resolve: func(string) (Checker, error) { return c, nil }}
 	if err := srv.Serve(in, &out); err != nil {
 		t.Fatalf("Serve: %v", err)
 	}
@@ -41,6 +41,22 @@ func run(t *testing.T, c Checker, lines ...string) []map[string]any {
 		resps = append(resps, m)
 	}
 	return resps
+}
+
+func TestToolsCallEcosystemRouted(t *testing.T) {
+	var gotEco string
+	srv := &Server{Version: "test", Resolve: func(eco string) (Checker, error) {
+		gotEco = eco
+		return fakeChecker{res: verdict.Result{Verdict: verdict.Safe, VerdictStr: "SAFE"}}, nil
+	}}
+	var out strings.Builder
+	in := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"check_package","arguments":{"name":"serde","ecosystem":"crates"}}}` + "\n")
+	if err := srv.Serve(in, &out); err != nil {
+		t.Fatal(err)
+	}
+	if gotEco != "crates" {
+		t.Errorf("ecosystem routed = %q, want crates", gotEco)
+	}
 }
 
 func TestInitializeAndToolsList(t *testing.T) {

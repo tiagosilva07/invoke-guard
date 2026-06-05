@@ -1,0 +1,1 @@
+["serde","syn","quote","proc-macro2","libc","rand","log","serde_json","itertools","regex","tokio","cfg-if","clap","anyhow","thiserror","bitflags","lazy_static","futures","bytes","hashbrown","once_cell","base64","chrono","tracing","num-traits","hyper","reqwest","uuid","semver","toml"]
