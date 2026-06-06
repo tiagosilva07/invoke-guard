@@ -62,51 +62,83 @@ func AnalyzeInstallScripts(ecosystem string, files map[string]string) verdict.Si
 var reEvalBlob = regexp.MustCompile(`(?is)(eval|Function)\([^)]*(base64|atob|Buffer\.from)`)
 
 // installBody returns the concatenated install-time code for the ecosystem and
-// whether any install-time code is present at all.
+// whether any install-time code is present at all. Per-ecosystem extraction is
+// split into helpers to keep each unit small and focused.
 func installBody(ecosystem string, files map[string]string) (string, bool) {
 	var b strings.Builder
-	present := false
 	add := func(s string) { b.WriteString(s); b.WriteByte('\n') }
+	var present bool
 	switch ecosystem {
 	case "npm":
-		for p, c := range files {
-			base := path.Base(p)
-			if base == "package.json" {
-				var pj struct {
-					Scripts map[string]string `json:"scripts"`
-				}
-				if json.Unmarshal([]byte(c), &pj) == nil {
-					for k, v := range pj.Scripts {
-						if k == "preinstall" || k == "install" || k == "postinstall" {
-							present = true
-							add(v)
-						}
-					}
-				}
-			}
-			if strings.HasSuffix(base, ".js") || strings.HasSuffix(base, ".cjs") || strings.HasSuffix(base, ".sh") {
-				present = true
-				add(c) // bundled scripts a lifecycle hook may invoke
-			}
-		}
+		present = npmInstallBody(files, add)
 	case "pypi":
-		for p, c := range files {
-			switch path.Base(p) {
-			case "setup.py", "setup.cfg", "pyproject.toml":
-				present = true
-				add(c)
-			}
-		}
+		present = pypiInstallBody(files, add)
 	case "crates":
-		for p, c := range files {
-			if path.Base(p) == "build.rs" {
-				present = true
-				add(c)
-			}
-			if path.Base(p) == "Cargo.toml" && strings.Contains(c, "build =") {
-				present = true
-			}
-		}
+		present = cratesInstallBody(files, add)
 	}
 	return b.String(), present
+}
+
+// npmInstallBody gathers package.json lifecycle scripts plus any bundled
+// .js/.cjs/.sh files a hook may invoke.
+func npmInstallBody(files map[string]string, add func(string)) bool {
+	present := false
+	for p, c := range files {
+		base := path.Base(p)
+		if base == "package.json" {
+			present = npmLifecycleScripts(c, add) || present
+		}
+		if strings.HasSuffix(base, ".js") || strings.HasSuffix(base, ".cjs") || strings.HasSuffix(base, ".sh") {
+			present = true
+			add(c)
+		}
+	}
+	return present
+}
+
+// npmLifecycleScripts extracts preinstall/install/postinstall from a package.json body.
+func npmLifecycleScripts(pkgJSON string, add func(string)) bool {
+	var pj struct {
+		Scripts map[string]string `json:"scripts"`
+	}
+	if json.Unmarshal([]byte(pkgJSON), &pj) != nil {
+		return false
+	}
+	present := false
+	for k, v := range pj.Scripts {
+		if k == "preinstall" || k == "install" || k == "postinstall" {
+			present = true
+			add(v)
+		}
+	}
+	return present
+}
+
+// pypiInstallBody gathers sdist build/config files.
+func pypiInstallBody(files map[string]string, add func(string)) bool {
+	present := false
+	for p, c := range files {
+		switch path.Base(p) {
+		case "setup.py", "setup.cfg", "pyproject.toml":
+			present = true
+			add(c)
+		}
+	}
+	return present
+}
+
+// cratesInstallBody gathers build.rs and notes a custom build target in Cargo.toml.
+func cratesInstallBody(files map[string]string, add func(string)) bool {
+	present := false
+	for p, c := range files {
+		base := path.Base(p)
+		if base == "build.rs" {
+			present = true
+			add(c)
+		}
+		if base == "Cargo.toml" && strings.Contains(c, "build =") {
+			present = true
+		}
+	}
+	return present
 }
