@@ -3,6 +3,7 @@
 [![CI](https://github.com/tiagosilva07/zyrax-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/tiagosilva07/zyrax-guard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tiagosilva07/zyrax-guard)](https://goreportcard.com/report/github.com/tiagosilva07/zyrax-guard)
+[![Website](https://img.shields.io/badge/website-zyrax.io-2cc9da)](https://zyrax.io)
 
 **Check a dependency before you install it.** Zyrax Guard vets packages for
 typosquats, known-malicious names, hallucinated package names, and supply-chain
@@ -23,6 +24,8 @@ $ zyrax-guard check lodash
 
 Works locally, in CI, and as a gate for AI coding agents. No account required. Nothing
 phones home except the public package name you are querying.
+
+🌐 **Homepage:** [zyrax.io](https://zyrax.io)
 
 ---
 
@@ -427,6 +430,10 @@ chain yourself.
 
 Zyrax Guard is **MIT-licensed and free** — every check, the PR gate, the MCP server, the
 shell hook, and the JSON/SARIF output. Read the code and verify the binary yourself.
+
+A **Zyrax platform** for teams (organization-wide policy, continuous monitoring, dashboards,
+and audit/compliance reporting) is in development. Learn more and join the early-access
+waitlist at **[zyrax.io](https://zyrax.io)**.
 
 ---
 
