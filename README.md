@@ -10,11 +10,15 @@ anomalies — in milliseconds, before the install runs. **Works with npm, PyPI, 
 crates.io** (one ecosystem-agnostic engine).
 
 ```
-$ zyrax-guard check reqeust
-✗ reqeust@latest — BLOCK
-  - looks like a typo of "request" (far more popular); this name has only 3 weekly downloads
-  did you mean: request
-  to override:  zyrax-guard allow reqeust
+$ zyrax-guard check lodahs
+✗ lodahs@0.0.1-security — BLOCK
+  - name is similar to "lodash" — double-check you meant this package
+  - MAL-2025-25502: Malicious code in lodahs (npm)
+  did you mean: lodash
+  to override:  zyrax-guard allow lodahs
+
+$ zyrax-guard check lodash
+✓ lodash@4.18.1 — SAFE
 ```
 
 Works locally, in CI, and as a gate for AI coding agents. No account required. Nothing
@@ -28,17 +32,6 @@ phones home except the public package name you are querying.
 
 ```bash
 go install github.com/tiagosilva07/zyrax-guard/cmd/zyrax-guard@latest
-```
-
-> `@latest` resolves once the first release is tagged. Before then, pin a branch
-> (`@main`) or build from source below.
-
-### Build from source
-
-```bash
-git clone https://github.com/tiagosilva07/zyrax-guard
-cd zyrax-guard
-go build -o zyrax-guard ./cmd/zyrax-guard
 ```
 
 ### Signed release binary
@@ -59,6 +52,14 @@ cosign verify-blob \
   zyrax-guard-linux-amd64
 ```
 
+### Build from source
+
+```bash
+git clone https://github.com/tiagosilva07/zyrax-guard
+cd zyrax-guard
+go build -o zyrax-guard ./cmd/zyrax-guard
+```
+
 ---
 
 ## Quickstart
@@ -66,39 +67,24 @@ cosign verify-blob \
 ### Check a single package
 
 ```bash
-$ zyrax-guard check express
-✓ express@latest — SAFE
-```
-
-```bash
-$ zyrax-guard check reqeust
-✗ reqeust@latest — BLOCK
-  - looks like a typo of "request" (far more popular); this name has only 3 weekly downloads
-  did you mean: request
-  to override:  zyrax-guard allow reqeust
+zyrax-guard check lodash                          # npm (default)
+zyrax-guard check requests --ecosystem pypi       # PyPI
+zyrax-guard check serde --ecosystem crates        # crates.io
 ```
 
 ### Check-then-install
 
 ```bash
-$ zyrax-guard install lodash axios
-✓ lodash@latest — SAFE
-✓ axios@latest — SAFE
-# runs: npm install lodash axios
-```
-
-```bash
-$ zyrax-guard install reqeust
-✗ reqeust@latest — BLOCK
-  - looks like a typo of "request"
-blocked — not installing. Override with: zyrax-guard allow <name>
+zyrax-guard install lodash axios                  # vets, then runs npm install
+zyrax-guard install flask --ecosystem pypi        # vets, then runs pip install
+zyrax-guard install serde --ecosystem crates      # vets, then runs cargo add
 ```
 
 ### Allow a package (add to local policy)
 
 ```bash
-$ zyrax-guard allow my-internal-pkg
-allowed "my-internal-pkg" (recorded in .zyrax/policy.json)
+zyrax-guard allow my-internal-pkg
+# allowed "my-internal-pkg" (recorded in .zyrax/policy.json)
 ```
 
 Commit `.zyrax/policy.json` — it is the reviewable allowlist for your project.
@@ -106,7 +92,7 @@ Commit `.zyrax/policy.json` — it is the reviewable allowlist for your project.
 ### Scan a PR's lockfile diff
 
 ```bash
-$ zyrax-guard scan --base /tmp/base-lock.json --head package-lock.json --sarif
+zyrax-guard scan --base /tmp/base-lock.json --head package-lock.json --sarif
 ```
 
 Emits SARIF 2.1.0 to stdout. Exit code 0 if no BLOCK; non-zero otherwise.
@@ -121,65 +107,42 @@ Guard supports **npm, PyPI, and crates.io**. Pick one with `--ecosystem` (defaul
 ```bash
 zyrax-guard check --ecosystem pypi requests
 zyrax-guard check --ecosystem crates serde
-zyrax-guard install --ecosystem pypi flask        # vets, then runs pip install
-zyrax-guard install --ecosystem crates serde      # vets, then runs cargo add
+zyrax-guard scan --ecosystem crates              # PR gate over Cargo.lock
+zyrax-guard scan --ecosystem pypi               # PR gate over poetry.lock / requirements.txt
 ```
-
-The shell hook and PR gate work per ecosystem too:
-
-```bash
-eval "$(zyrax-guard init bash pip)"      # gate pip install
-eval "$(zyrax-guard init bash cargo)"    # gate cargo add
-zyrax-guard scan --ecosystem crates      # PR gate over Cargo.lock
-zyrax-guard scan --ecosystem pypi        # PR gate over poetry.lock / requirements.txt
-```
-
-The MCP `check_package` tool takes an `ecosystem` argument (`npm`/`pypi`/`crates`).
 
 ---
 
 ## How the checks work
 
-Zyrax Guard runs four checks against public registry metadata — no local execution,
-no installs, no sandboxing required:
+Guard runs against public registry metadata only — no local execution, no installs, no sandboxing:
 
 | Check | Verdict trigger |
 |---|---|
 | **Existence** | Package not found on the registry → **BLOCK** (hallucinated or trap name) |
-| **Typosquat** | Name is 1 edit away from a much-more-popular package AND itself has near-zero downloads → **BLOCK** with a "did you mean" suggestion. Weaker similarity → **WARN**. |
-| **Known-bad** | OSV advisory or bundled denylist match → malware / high-severity → **BLOCK**; low-severity → **WARN** |
-| **Age & popularity** | Published < 30 days AND < 50 weekly downloads → **WARN** (suspicious, not conclusive alone) |
-
-PR-gate (`scan`) additionally runs:
-
-| Check | Trigger |
-|---|---|
-| **Lockfile integrity** | Existing dependency's resolved URL or integrity hash changed in the lockfile diff → **BLOCK** |
-| **Maintainer change** | New version published by a maintainer not seen before → **WARN** |
+| **Typosquat** | Name is 1 edit away from a far-more-popular package AND has near-zero downloads → **BLOCK** with a "did you mean" suggestion |
+| **Known-bad** | OSV advisory match → malware / high-severity → **BLOCK**; low-severity → **WARN** |
+| **Age & popularity** | Published < 30 days AND < 50 weekly downloads → **WARN** |
+| **Lockfile integrity** | *(scan only)* Resolved URL or integrity hash changed → **BLOCK** |
+| **Maintainer change** | *(scan only)* New version published by a previously unseen maintainer → **WARN** |
 
 ---
 
 ## Deep check (`--deep`)
 
-By default Guard checks are metadata-only (milliseconds). Add `--deep` to also download the
-package's distribution artifact and **statically analyze the code it runs at install/build
+By default checks are metadata-only (milliseconds). Add `--deep` to also download the
+package's distribution artifact and **statically inspect the code it runs at install/build
 time** — npm `preinstall`/`install`/`postinstall` scripts, PyPI `setup.py`, crates `build.rs`:
 
 ```bash
-zyrax-guard check --deep --ecosystem npm some-pkg
-zyrax-guard scan --deep --ecosystem pypi          # PR gate, deep
+zyrax-guard check --deep some-pkg
+zyrax-guard scan --deep                          # PR gate, deep mode
 ```
 
-It flags red flags — network calls, process spawning, base64/obfuscated `eval`, and
-sensitive-file/env access — and **BLOCKs** on the dangerous combinations (e.g. "download a
-script and run it"). It runs **no code** (purely static) and is **best-effort**: if the
-artifact can't be fetched, you get an informational note, never a false block. Agents can pass
-`deep: true` to the `check_package` MCP tool.
-
-`scan --deep` downloads and inspects each **added** dependency in turn, so its cost scales with
-the size of the diff. The whole pass is bounded by an overall time budget (3 minutes); on a very
-large diff any packages past the budget fall back to a metadata-only check (you'll see a note on
-stderr).
+It flags red-flag patterns — network calls, process spawning, base64/obfuscated `eval` —
+and **BLOCKs** on dangerous combinations (e.g. "download a script and run it"). It runs
+**no code** (purely static) and is **best-effort**: if the artifact cannot be fetched you
+get an informational note, never a false block.
 
 Zero added dependencies — the extractor uses stdlib `archive/tar` + `compress/gzip` only.
 
@@ -193,52 +156,206 @@ Zero added dependencies — the extractor uses stdlib `archive/tar` + `compress/
 | **WARN** | Suspicious — review before proceeding | `0` (use `--strict` to make it `1`) |
 | **BLOCK** | Strong indicator of malicious or hallucinated package | `1` |
 
-Policy overlays everything: `zyrax-guard allow <name>` forces SAFE regardless of signals;
-a `.zyrax/policy.json` deny entry forces BLOCK.
+---
+
+## Make it automatic — shell hook
+
+The shell hook intercepts `npm install` / `pip install` / `cargo add` transparently.
+Every new package gets checked before the real installer runs; already-installed and
+non-install commands pass through untouched.
+
+### macOS / Linux (bash or zsh)
+
+Add to `~/.bashrc`, `~/.zshrc`, or `~/.bash_profile`:
+
+```bash
+# Gate npm installs (default)
+eval "$(zyrax-guard init bash)"
+
+# Gate pip installs
+eval "$(zyrax-guard init bash pip)"
+
+# Gate cargo add
+eval "$(zyrax-guard init bash cargo)"
+```
+
+Apply immediately without restarting your terminal:
+
+```bash
+source ~/.zshrc        # or ~/.bashrc
+```
+
+### Windows (PowerShell)
+
+Add to your PowerShell profile (`$PROFILE`). To find and open it:
+
+```powershell
+notepad $PROFILE      # creates the file if it doesn't exist
+```
+
+Add this line and save:
+
+```powershell
+Invoke-Expression (zyrax-guard init powershell | Out-String)
+```
+
+Apply immediately:
+
+```powershell
+. $PROFILE
+```
+
+From now on every `npm install`, `pip install`, or `cargo add` in a PowerShell window
+is automatically checked before anything installs.
 
 ---
 
 ## Using with AI coding agents
 
-AI agents sometimes hallucinate package names. Attackers pre-register those names with
-malware. Guard breaks that attack chain.
+AI agents sometimes hallucinate package names. Attackers pre-register those names as
+malware. Guard breaks that attack chain by checking every package before the agent ever
+runs an install.
 
-**Native agent integration (MCP):** register Guard as a tool your agent can call, so it
-checks a package *before* it ever runs an install command:
+### Claude Code CLI
+
+Register Guard as a persistent MCP tool so Claude checks packages automatically:
 
 ```bash
 claude mcp add zyrax-guard -- zyrax-guard mcp
 ```
 
-The agent gets a `check_package` tool that returns SAFE / WARN / BLOCK with reasons.
-(Cursor / Windsurf: add an equivalent `mcpServers` entry running `zyrax-guard mcp`.)
-
-**Transparent shell hook:** gate `npm install` / `pip install` / `cargo add` automatically — add to your shell rc:
+That's it. Claude Code now has a `check_package` tool it calls before suggesting
+`npm install` / `pip install` / `cargo add`. To enable the deep install-script check:
 
 ```bash
-# ~/.bashrc or ~/.zshrc
-eval "$(zyrax-guard init bash)"          # npm (default)
-eval "$(zyrax-guard init bash pip)"      # pip
-eval "$(zyrax-guard init bash cargo)"    # cargo
-```
-```powershell
-# PowerShell $PROFILE
-Invoke-Expression (zyrax-guard init powershell | Out-String)
+claude mcp add zyrax-guard -- zyrax-guard mcp
 ```
 
-The hook checks each newly added package and blocks before the real installer runs;
-non-install commands pass through untouched.
+Then in a Claude Code session, Guard's `check_package` tool accepts a `deep` boolean:
 
-**Or route installs manually:** `zyrax-guard install <pkg>` checks, then installs only if
-nothing is blocked.
+```
+check_package(name="some-pkg", ecosystem="npm", deep=true)
+```
+
+You can also add a rule to your `CLAUDE.md`:
+
+```markdown
+## Dependency policy
+Before installing any package, use the zyrax-guard MCP tool to check it.
+Never install a BLOCK result. Treat WARN as a prompt to confirm with the user.
+```
+
+### Cursor
+
+Add to `.cursor/mcp.json` in your project root (or the global `~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "zyrax-guard": {
+      "command": "zyrax-guard",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Restart Cursor. The agent now has access to `check_package` before installing anything.
+
+### Windsurf
+
+Add to `.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "zyrax-guard": {
+      "command": "zyrax-guard",
+      "args": ["mcp"],
+      "description": "Check npm/PyPI/crates packages for malware and typosquats before installing"
+    }
+  }
+}
+```
+
+### VS Code (GitHub Copilot / Copilot Chat)
+
+Add to your VS Code `settings.json`:
+
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "zyrax-guard": {
+      "command": "zyrax-guard",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Or add to `.vscode/mcp.json` in your project:
+
+```json
+{
+  "servers": {
+    "zyrax-guard": {
+      "type": "stdio",
+      "command": "zyrax-guard",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Continue.dev
+
+Add to `~/.continue/config.json`:
+
+```json
+{
+  "mcpServers": [
+    {
+      "name": "zyrax-guard",
+      "command": "zyrax-guard",
+      "args": ["mcp"]
+    }
+  ]
+}
+```
+
+### How the MCP tool works
+
+Once registered, the agent has access to `check_package`:
+
+```json
+{
+  "name": "check_package",
+  "arguments": {
+    "name": "lodahs",
+    "ecosystem": "npm",
+    "deep": false
+  }
+}
+```
+
+Returns:
+
+```json
+{
+  "verdict": "BLOCK",
+  "reasons": ["MAL-2025-25502: Malicious code in lodahs (npm)"],
+  "didYouMean": "lodash"
+}
+```
+
+A `BLOCK` is a normal result (not an MCP error) — the agent should stop and tell the user
+rather than proceeding with the install.
 
 ---
 
 ## Using in CI
 
 ### GitHub Actions (PR gate)
-
-Install the binary, then gate the PR on its lockfile diff against the target branch:
 
 ```yaml
 # .github/workflows/guard.yml
@@ -256,30 +373,37 @@ jobs:
       - name: Guard new dependencies
         run: |
           git show "origin/${{ github.base_ref }}:package-lock.json" > /tmp/base-lock.json 2>/dev/null || echo '{"packages":{}}' > /tmp/base-lock.json
-          zyrax-guard scan --base /tmp/base-lock.json --head package-lock.json --strict --sarif > guard.sarif
+          zyrax-guard scan \
+            --base /tmp/base-lock.json \
+            --head package-lock.json \
+            --strict \
+            --sarif > guard.sarif
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with: { sarif_file: guard.sarif }
 ```
 
 It checks only **newly added or changed** dependencies (fast, no re-flagging the whole
-tree), fails the PR on any BLOCK (and WARN under `--strict`), and uploads SARIF to GitHub
-Code Scanning. (Inside this repo, the bundled composite action at
-`.github/actions/guard` wraps the same `scan` call.)
+tree), fails the PR on any BLOCK, and uploads results to GitHub Code Scanning.
 
-### Raw CLI in CI
+### PyPI in CI
 
 ```bash
-# In any CI environment that has the binary:
-zyrax-guard scan --base "$BASE_LOCK" --head package-lock.json --sarif --strict > guard.sarif
+git show "origin/$BASE_REF:poetry.lock" > /tmp/base-lock.txt 2>/dev/null || echo "" > /tmp/base-lock.txt
+zyrax-guard scan --ecosystem pypi \
+  --base /tmp/base-lock.txt \
+  --head poetry.lock \
+  --sarif --strict > guard.sarif
 ```
 
-Upload `guard.sarif` to GitHub Code Scanning:
+### crates.io in CI
 
-```yaml
-- uses: github/codeql-action/upload-sarif@7fd177fa680c9881b53cdab4d346d32574c9f7f4  # v3
-  with:
-    sarif_file: guard.sarif
+```bash
+git show "origin/$BASE_REF:Cargo.lock" > /tmp/base-lock.txt 2>/dev/null || echo "" > /tmp/base-lock.txt
+zyrax-guard scan --ecosystem crates \
+  --base /tmp/base-lock.txt \
+  --head Cargo.lock \
+  --sarif --strict > guard.sarif
 ```
 
 ---
@@ -287,14 +411,15 @@ Upload `guard.sarif` to GitHub Code Scanning:
 ## Privacy promise
 
 Only the **public package names you query** leave your machine, as read-only lookups
-against:
+against public registry APIs:
 
 - `registry.npmjs.org` — existence and metadata
 - `api.npmjs.org` — download counts
 - `api.osv.dev` — known advisories
 
-No telemetry. No account. No secrets. The binary is reproducible (`-trimpath`), and
-every release ships SLSA L3 provenance so you can verify the build chain yourself.
+No telemetry. No account. No secrets sent anywhere. The binary is reproducible
+(`-trimpath`), and every release ships SLSA L3 provenance so you can verify the build
+chain yourself.
 
 ---
 
@@ -309,10 +434,11 @@ shell hook, and the JSON/SARIF output. Read the code and verify the binary yours
 
 | Phase | Item |
 |---|---|
-| **v1** | npm CLI + PR gate + JSON/SARIF + self-hardening |
+| **v1** | npm CLI + PR gate + JSON/SARIF + self-hardening — shipped |
 | **v1.1** | MCP server (`check_package`) + shell-hook (`zyrax-guard init`) — shipped |
 | **v1.2** | PyPI + crates.io across check/install/hook/MCP/scan — shipped |
-| **v1.3** (now) | Deep check (`--deep`): static install/build-script analysis — shipped |
+| **v1.3** | Deep check (`--deep`): static install/build-script analysis — shipped |
+| **v0.5.0** | Rebrand to Zyrax; public release — shipped |
 
 The roadmap items drop in via the existing `Ecosystem`, `ThreatIntel`, `Policy`, and
 `Reporter` seams — no re-architecting required.
