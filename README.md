@@ -31,6 +31,17 @@ phones home except the public package name you are querying.
 
 ## Install
 
+### Quick install (Linux / macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tiagosilva07/zyrax-guard/main/scripts/install.sh | sh
+```
+
+Downloads the signed release binary for your OS/arch, verifies its SHA-256 against
+the release checksums, and installs it (to `/usr/local/bin`, or `~/.local/bin` if that
+is not writable). Pin a version with `VERSION=v0.5.0`, or set `BINDIR` to choose where
+it lands. Verifies the cosign signature too when `cosign` is on your PATH.
+
 ### `go install` (Go 1.23+)
 
 ```bash
@@ -100,6 +111,50 @@ zyrax-guard scan --base /tmp/base-lock.json --head package-lock.json --sarif
 
 Emits SARIF 2.1.0 to stdout. Exit code 0 if no BLOCK; non-zero otherwise.
 Add `--strict` to treat WARN as failure.
+
+---
+
+## GitHub Action
+
+Gate every pull request: Zyrax Guard checks dependencies added in the PR and fails the
+check if any is blocked. Add `.github/workflows/zyrax-guard.yml`:
+
+```yaml
+name: Zyrax Guard
+on: pull_request
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # lets Guard diff against the PR base (added deps only)
+      - uses: tiagosilva07/zyrax-guard@v1
+        with:
+          ecosystem: npm          # npm | pypi | crates
+```
+
+On a pull request it scans only the dependencies added versus the base branch; otherwise
+it scans the whole lockfile. The job fails when a dependency is blocked.
+
+**Inputs** (all optional): `ecosystem` (default `npm`), `lockfile` (default per-ecosystem),
+`base` (explicit base lockfile), `strict` (treat WARN as failure), `deep` (inspect install
+scripts), `version` (Guard release, default `latest`), `fail-on-block` (default `true`),
+`sarif-file` (write SARIF for Code Scanning), `args` (extra raw flags).
+
+Upload results to **GitHub Code Scanning** so findings show up inline on the PR:
+
+```yaml
+      - uses: tiagosilva07/zyrax-guard@v1
+        with:
+          sarif-file: zyrax-guard.sarif
+          fail-on-block: "false"   # let Code Scanning surface findings; don't hard-fail
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: zyrax-guard.sarif
+```
+
+(That job needs `permissions: { security-events: write }`.)
 
 ---
 

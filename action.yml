@@ -1,0 +1,110 @@
+name: "Zyrax Guard"
+description: "Catch malicious or risky dependencies (typosquats, malware, hallucinated names, risky install scripts) in CI before they merge."
+author: "Zyrax"
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  ecosystem:
+    description: "Package ecosystem: npm, pypi, or crates."
+    default: "npm"
+  lockfile:
+    description: "Lockfile to scan. Empty uses the ecosystem default (package-lock.json / poetry.lock / Cargo.lock)."
+    default: ""
+  base:
+    description: "Base lockfile to diff against (scan only added/changed deps). Empty: on a pull_request, the base ref's lockfile is used automatically when available; otherwise the whole lockfile is scanned."
+    default: ""
+  strict:
+    description: "Treat WARN as a failure (not just BLOCK)."
+    default: "false"
+  deep:
+    description: "Download each added dependency's artifact and statically inspect its install/build scripts."
+    default: "false"
+  version:
+    description: "Zyrax Guard release to install (e.g. v0.5.0). 'latest' resolves the newest release."
+    default: "latest"
+  sarif-file:
+    description: "If set, write SARIF results to this path (for upload to GitHub Code Scanning). Empty: human-readable output in the log."
+    default: ""
+  fail-on-block:
+    description: "Fail the job when a dependency is blocked. Set false to report without failing."
+    default: "true"
+  args:
+    description: "Extra raw arguments appended to the scan command."
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install zyrax-guard
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        BINDIR: ${{ runner.temp }}/zyrax-guard-bin
+      run: |
+        sh "${{ github.action_path }}/scripts/install.sh"
+        echo "${{ runner.temp }}/zyrax-guard-bin" >> "$GITHUB_PATH"
+
+    - name: Scan dependencies
+      shell: bash
+      env:
+        ZG_ECO: ${{ inputs.ecosystem }}
+        ZG_LOCK: ${{ inputs.lockfile }}
+        ZG_BASE: ${{ inputs.base }}
+        ZG_STRICT: ${{ inputs.strict }}
+        ZG_DEEP: ${{ inputs.deep }}
+        ZG_SARIF: ${{ inputs.sarif-file }}
+        ZG_ARGS: ${{ inputs.args }}
+        ZG_FAIL: ${{ inputs.fail-on-block }}
+        GH_EVENT: ${{ github.event_name }}
+        GH_BASE_REF: ${{ github.base_ref }}
+      run: |
+        set -eu
+        LOCK="$ZG_LOCK"
+        if [ -z "$LOCK" ]; then
+          case "$ZG_ECO" in
+            npm) LOCK=package-lock.json ;;
+            pypi) LOCK=poetry.lock ;;
+            crates) LOCK=Cargo.lock ;;
+            *) echo "unsupported ecosystem: $ZG_ECO" >&2; exit 2 ;;
+          esac
+        fi
+        if [ ! -f "$LOCK" ]; then
+          echo "No lockfile at '$LOCK' — nothing to scan."
+          exit 0
+        fi
+
+        set -- scan --ecosystem "$ZG_ECO" --head "$LOCK"
+
+        BASE="$ZG_BASE"
+        if [ -z "$BASE" ] && [ "$GH_EVENT" = pull_request ] && [ -n "$GH_BASE_REF" ]; then
+          if git show "origin/$GH_BASE_REF:$LOCK" > "$RUNNER_TEMP/zg-base.lock" 2>/dev/null; then
+            BASE="$RUNNER_TEMP/zg-base.lock"
+            echo "Scanning dependencies added vs origin/$GH_BASE_REF"
+          else
+            echo "note: base lockfile unavailable (use actions/checkout with fetch-depth: 0 for PR-diff mode); scanning the full lockfile"
+          fi
+        fi
+        [ -n "$BASE" ] && set -- "$@" --base "$BASE"
+        [ "$ZG_STRICT" = "true" ] && set -- "$@" --strict
+        [ "$ZG_DEEP" = "true" ] && set -- "$@" --deep
+        [ -n "$ZG_SARIF" ] && set -- "$@" --sarif
+        # shellcheck disable=SC2086
+        [ -n "$ZG_ARGS" ] && set -- "$@" $ZG_ARGS
+
+        echo "+ zyrax-guard $*"
+        set +e
+        if [ -n "$ZG_SARIF" ]; then
+          zyrax-guard "$@" > "$ZG_SARIF"
+        else
+          zyrax-guard "$@"
+        fi
+        code=$?
+        set -e
+
+        if [ "$code" -ne 0 ] && [ "$ZG_FAIL" != "true" ]; then
+          echo "zyrax-guard reported issues (exit $code); fail-on-block=false, not failing the job."
+          exit 0
+        fi
+        exit $code
