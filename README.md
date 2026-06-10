@@ -129,13 +129,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0          # lets Guard diff against the PR base (added deps only)
-      - uses: tiagosilva07/zyrax-guard@v0.6.0
+      - uses: tiagosilva07/zyrax-guard@v0
         with:
           ecosystem: npm          # npm | pypi | crates
 ```
 
 On a pull request it scans only the dependencies added versus the base branch; otherwise
-it scans the whole lockfile. The job fails when a dependency is blocked.
+it scans the whole lockfile. The job fails when a dependency is blocked. `@v0` tracks the
+latest 0.x release; pin an exact version (e.g. `@v0.6.0`) for fully reproducible CI.
 
 **Inputs** (all optional): `ecosystem` (default `npm`), `lockfile` (default per-ecosystem),
 `base` (explicit base lockfile), `strict` (treat WARN as failure), `deep` (inspect install
@@ -145,7 +146,7 @@ scripts), `version` (Guard release, default `latest`), `fail-on-block` (default 
 Upload results to **GitHub Code Scanning** so findings show up inline on the PR:
 
 ```yaml
-      - uses: tiagosilva07/zyrax-guard@v0.6.0
+      - uses: tiagosilva07/zyrax-guard@v0
         with:
           sarif-file: zyrax-guard.sarif
           fail-on-block: "false"   # let Code Scanning surface findings; don't hard-fail
