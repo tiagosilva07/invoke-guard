@@ -129,7 +129,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0          # lets Guard diff against the PR base (added deps only)
-      - uses: tiagosilva07/zyrax-guard@v1
+      - uses: tiagosilva07/zyrax-guard@v0.6.0
         with:
           ecosystem: npm          # npm | pypi | crates
 ```
@@ -145,7 +145,7 @@ scripts), `version` (Guard release, default `latest`), `fail-on-block` (default 
 Upload results to **GitHub Code Scanning** so findings show up inline on the PR:
 
 ```yaml
-      - uses: tiagosilva07/zyrax-guard@v1
+      - uses: tiagosilva07/zyrax-guard@v0.6.0
         with:
           sarif-file: zyrax-guard.sarif
           fail-on-block: "false"   # let Code Scanning surface findings; don't hard-fail
