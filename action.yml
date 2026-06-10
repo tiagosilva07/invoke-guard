@@ -1,5 +1,5 @@
 name: "Zyrax Guard"
-description: "Catch malicious or risky dependencies (typosquats, malware, hallucinated names, risky install scripts) in CI before they merge."
+description: "Catch malicious or risky dependencies in CI before they merge: typosquats, malware, hallucinated names."
 author: "Zyrax"
 branding:
   icon: "shield"
